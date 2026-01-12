@@ -22,13 +22,13 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="15*"/>
-                        <ColumnDefinition Width="382*"/>
+                        <ColumnDefinition Width="82*"/>
+                        <ColumnDefinition Width="300*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Button Content="Hae tiedot" HorizontalAlignment="Left" Margin="68,30,0,0" VerticalAlignment="Top" Height="40" Width="144" Click="Button_Click_1" RenderTransformOrigin="0.451,-0.747" Grid.Column="1"/>
+                    <Button Content="Hae tiedot" HorizontalAlignment="Left" Margin="68,30,0,0" VerticalAlignment="Top" Height="40" Width="144" Click="Button_Click_1" RenderTransformOrigin="0.451,-0.747" Grid.Column="1" Grid.ColumnSpan="2"/>
 
-                    <DataGrid x:Name="tuotelista" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="68,93,72,162" Grid.Column="1"/>
-
+                    <DataGrid x:Name="tuotelista" Margin="68,93,62,79" Grid.Column="1" AutoGeneratingColumn="Tuotelista_AutoGeneratingColumn" Grid.ColumnSpan="2"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Lisää/poista">
@@ -47,21 +47,22 @@
             </TabItem>
             <TabItem x:Name="asiakkaat_tab" Header="Asiakkaat">
                 <Grid>
-                    <DataGrid x:Name="asiakaslista" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="70,203,70,52"/>
+                    <DataGrid x:Name="asiakaslista" Margin="72,193,72,20"/>
                     <Button Content="Lisää asiakas" HorizontalAlignment="Left" Margin="317,139,0,0" VerticalAlignment="Top" Width="109" Height="33" Click="Button_Click_3"/>
-                    <TextBox x:Name="asiakas_nimi" HorizontalAlignment="Left" Margin="210,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
+                    <TextBox x:Name="asiakas_nimi" HorizontalAlignment="Left" Margin="210,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
                     <TextBox x:Name="asiakas_osoite" HorizontalAlignment="Left" Margin="210,70,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
-                    <TextBox x:Name="asiakas_puhelin" HorizontalAlignment="Left" Margin="210,93,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
+                    <TextBox x:Name="asiakas_puhelin" HorizontalAlignment="Left" Margin="210,101,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
                 </Grid>
             </TabItem>
             <TabItem x:Name="tilaukset_tab" Header="Tilaukset" VerticalAlignment="Center">
                 <Grid>
-                    <DataGrid x:Name="tilauslista" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="0,112,0,36" AutoGenerateColumns="False">
+                    <DataGrid x:Name="tilauslista" Margin="0,112,0,36" AutoGenerateColumns="False" CanUserAddRows="False" RowEditEnding="Tilauslista_RowEditEnding">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding id}" Width="*"/>
-                            <DataGridTextColumn Header="Asiakas" Binding="{Binding asiakas}" Width="*"/>
-                            <DataGridTextColumn Header="Osoite" Binding="{Binding osoite}" Width="*"/>
-                            <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*"/>
+                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding id}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Asiakas" Binding="{Binding asiakas}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Osoite" Binding="{Binding osoite}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Määrä" Binding="{Binding maara}" Width="*"/>
                             <DataGridTemplateColumn>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -69,16 +70,41 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTemplateColumn>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Name="poista_tilaus" Content="Poista" Click="Poista_Tilaus_Click"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                     <ComboBox x:Name="cb_tuote_tilaus" HorizontalAlignment="Left" Margin="106,43,0,0" VerticalAlignment="Top" Width="120"/>
                     <ComboBox x:Name="cb_asiakas_tilaus" HorizontalAlignment="Left" Margin="277,43,0,0" VerticalAlignment="Top" Width="120" RenderTransformOrigin="-0.05,0.095"/>
-                    <Button Content="Lisää tilaus" HorizontalAlignment="Left" Margin="464,44,0,0" VerticalAlignment="Top" Height="33" Width="116" Click="Button_Click_4"/>
+                    <Button Content="Lisää tilaus" HorizontalAlignment="Left" Margin="497,43,0,0" VerticalAlignment="Top" Height="33" Width="116" Click="Button_Click_4"/>
+                    <TextBlock Text="Määrä" Margin="420,20,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                    <TextBox x:Name="tb_tilausMaara" Text="1" Margin="420,43,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Width="50"/>
+
                 </Grid>
             </TabItem>
             <TabItem Header="Toimitetut">
                 <Grid>
-                    <DataGrid x:Name="toimitetut_lista" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="70,93,70,52"/>
+                    <DataGrid x:Name="toimitetut_lista" Margin="70,93,70,52" AutoGenerateColumns="False" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding id}" Width="*"/>
+                            <DataGridTextColumn Header="Asiakas" Binding="{Binding asiakas}" Width="*"/>
+                            <DataGridTextColumn Header="Osoite" Binding="{Binding osoite}" Width="*"/>
+                            <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*"/>
+                            <DataGridTextColumn Header="Määrä" Binding="{Binding maara}" Width="*" IsReadOnly="True"/>
+                            <DataGridTemplateColumn>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Name="peruuta_tilaus" Content="Peruuta" Click="Peruuta_Tilaus_Click"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </TabItem>
         </TabControl>

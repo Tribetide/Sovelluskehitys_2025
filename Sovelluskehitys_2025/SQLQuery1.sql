@@ -29,8 +29,8 @@ INSERT INTO tuotteet (nimi, hinta, varastosaldo) VALUES
 
 INSERT INTO tilaukset(tuote_id, asiakas_id) VALUES(2, 1);	
 
-SELECT * FROM tuotteet;
-SELECT * FROM asiakkaat ORDER BY id DESC;
+SELECT id, nimi FROM tuotteet;
+SELECT id, nimi FROM asiakkaat ORDER BY id DESC;
 
 UPDATE asiakkaat SET nimi='Alpo' WHERE id=2;
 

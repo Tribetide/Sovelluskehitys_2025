@@ -9,8 +9,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Database\schema.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Database\schema.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MahApps.Metro" Version="2.4.11" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Data\sovelluskehitys.db">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
