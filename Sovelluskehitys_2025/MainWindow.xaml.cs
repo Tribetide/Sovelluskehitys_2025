@@ -1,9 +1,10 @@
-﻿using ControlzEx.Theming;
+using ControlzEx.Theming;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using Microsoft.Data.Sqlite;
+using System;
 using System.Data;
-using System.Text;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -13,15 +14,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Globalization;
-
-
+using Sovelluskehitys_2025.Data;
 
 namespace Sovelluskehitys_2025
 {
     public partial class MainWindow : MetroWindow
     {
-        SqliteConnection yhteys;
+        private SqliteConnection yhteys = null!;
+        private AppService appService = null!;
 
         public MainWindow()
         {
@@ -30,74 +30,76 @@ namespace Sovelluskehitys_2025
             ThemeManager.Current.ChangeTheme(this, "Light.Blue");
         }
 
-        private void Paivita_DataGrid(string kysely, string taulun_nimi, DataGrid grid)
+        private static void BindDataGrid(DataTable table, DataGrid grid)
         {
-            using var komento = yhteys.CreateCommand();
-            komento.CommandText = kysely;
-
-            using var lukija = komento.ExecuteReader();
-            var taulu = new DataTable(taulun_nimi);
-            taulu.Load(lukija);
-
-            grid.ItemsSource = taulu.DefaultView;
+            grid.ItemsSource = table.DefaultView;
         }
 
-        private void Paivita_ComboBox(string kysely, ComboBox kombo)
+        private static void BindComboBox(DataTable table, ComboBox combo)
         {
-            using var komento = yhteys.CreateCommand();
-            komento.CommandText = kysely;
+            combo.ItemsSource = table.DefaultView;
+            combo.DisplayMemberPath = "nimi";
+            combo.SelectedValuePath = "id";
+        }
 
-            using var lukija = komento.ExecuteReader();
+        private void Paivita_Tuotelista()
+        {
+            BindDataGrid(appService.GetProducts(), tuotelista);
+        }
 
-            var taulu = new DataTable();
-            taulu.Columns.Add("id", typeof(long));
-            taulu.Columns.Add("nimi", typeof(string));
+        private void Paivita_Asiakaslista()
+        {
+            BindDataGrid(appService.GetCustomers(), asiakaslista);
+        }
 
-            kombo.ItemsSource = taulu.DefaultView;
-            kombo.DisplayMemberPath = "nimi";
-            kombo.SelectedValuePath = "id";
+        private void Paivita_Kategorialista()
+        {
+            BindDataGrid(appService.GetCategories(), kategorialista);
+        }
 
-            while (lukija.Read())
-            {
-                long id = lukija.GetInt64(0);
-                string nimi = lukija.GetString(1);
-                taulu.Rows.Add(id, nimi);
-            }
+        private void Paivita_TuoteCombos()
+        {
+            BindComboBox(appService.GetProductOptions(), cb_tuotelista);
+            BindComboBox(appService.GetProductOptions(), cb_tuote_tilaus);
+        }
+
+        private void Paivita_AsiakasCombo()
+        {
+            BindComboBox(appService.GetCustomerOptions(), cb_asiakas_tilaus);
+        }
+
+        private void Paivita_KategoriaCombos()
+        {
+            var kategoriat = appService.GetCategoryOptions();
+            BindComboBox(kategoriat, cb_kategoria_poisto);
+
+            var valinta = kategoriat.Copy();
+            var emptyRow = valinta.NewRow();
+            emptyRow["id"] = DBNull.Value;
+            emptyRow["nimi"] = "Ei kategoriaa";
+            valinta.Rows.InsertAt(emptyRow, 0);
+            var viewSource = (CollectionViewSource)FindResource("KategoriaOptions");
+            viewSource.Source = valinta;
+            BindComboBox(valinta, cb_kategoria_tuote);
+            cb_kategoria_tuote.SelectedIndex = 0;
+        }
+
+        private long? GetSelectedCategoryId()
+        {
+            if (cb_kategoria_tuote.SelectedValue == null || cb_kategoria_tuote.SelectedValue is DBNull)
+                return null;
+
+            return Convert.ToInt64(cb_kategoria_tuote.SelectedValue);
         }
 
         private void Paivita_Tilauslistat()
         {
-            Paivita_DataGrid(@"
-                SELECT t.id as id,
-                    tr.id as rivi_id,
-                    a.nimi as asiakas,
-                    a.osoite as osoite,
-                    tu.nimi as tuote,
-                    tr.maara as maara,
-                    tr.tuote_id as tuote_id,
-                    t.toimitettu as toimitettu
-                FROM tilaukset t
-                JOIN asiakkaat a ON a.id = t.asiakas_id
-                JOIN tilausrivit tr ON tr.tilaus_id = t.id
-                JOIN tuotteet tu ON tu.id = tr.tuote_id
-                WHERE t.toimitettu = 0
-                ORDER BY t.id DESC;", "tilaukset", tilauslista);
+            BindDataGrid(appService.GetOpenOrders(), tilauslista);
         }
-        private void Paivita_Toimitetutlistat() 
+
+        private void Paivita_Toimitetutlistat()
         {
-            Paivita_DataGrid(@"
-                SELECT t.id as id,
-                    a.nimi as asiakas,
-                    a.osoite as osoite,
-                    tu.nimi as tuote,
-                    tr.maara as maara,
-                    t.toimitettu as toimitettu
-                FROM tilaukset t
-                JOIN asiakkaat a ON a.id = t.asiakas_id
-                JOIN tilausrivit tr ON tr.tilaus_id = t.id
-                JOIN tuotteet tu ON tu.id = tr.tuote_id
-                WHERE t.toimitettu = 1
-                ORDER BY t.id DESC;", "toimitetut", toimitetut_lista);
+            BindDataGrid(appService.GetDeliveredOrders(), toimitetut_lista);
         }
 
         private void Paivita_Tilausnakyma()
@@ -125,17 +127,11 @@ namespace Sovelluskehitys_2025
                 return;
             }
 
-            using var cmd = yhteys.CreateCommand();
-            cmd.CommandText = "INSERT INTO tuotteet (nimi, hinta, varastosaldo) VALUES (@nimi, @hinta, @saldo);";
-            cmd.Parameters.AddWithValue("@nimi", tekstikentta_1.Text);
-            cmd.Parameters.AddWithValue("@hinta", hinta);
-            cmd.Parameters.AddWithValue("@saldo", saldo);
-            cmd.ExecuteNonQuery();
+            long? kategoriaId = GetSelectedCategoryId();
+            appService.AddProduct(tekstikentta_1.Text, hinta, saldo, kategoriaId);
 
-
-            Paivita_DataGrid("SELECT id, nimi, hinta, varastosaldo FROM tuotteet ORDER BY nimi", "tuotteet", tuotelista);
-            Paivita_ComboBox("SELECT id, nimi FROM tuotteet ORDER BY nimi", cb_tuotelista);
-            Paivita_ComboBox("SELECT id, nimi FROM tuotteet ORDER BY nimi", cb_tuote_tilaus);
+            Paivita_Tuotelista();
+            Paivita_TuoteCombos();
 
             tekstikentta_1.Clear();
             tekstikentta_2.Clear();
@@ -144,7 +140,7 @@ namespace Sovelluskehitys_2025
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
-            Paivita_DataGrid("SELECT id, nimi, hinta, varastosaldo FROM tuotteet ORDER BY nimi", "tuotteet", tuotelista);
+            Paivita_Tuotelista();
         }
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
@@ -155,15 +151,28 @@ namespace Sovelluskehitys_2025
                 return;
             }
 
+            var vahvistus = MessageBox.Show(
+                "Haluatko varmasti poistaa tuotteen?",
+                "Vahvista poisto",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (vahvistus != MessageBoxResult.Yes)
+                return;
+
             long id = (long)cb_tuotelista.SelectedValue;
 
-            using var cmd = yhteys.CreateCommand();
-            cmd.CommandText = "DELETE FROM tuotteet WHERE id = @id;";
-            cmd.Parameters.AddWithValue("@id", id);
-            cmd.ExecuteNonQuery();
+            try
+            {
+                appService.DeleteProduct(id);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Tuotteen poisto epäonnistui: " + ex.Message);
+                return;
+            }
 
-            Paivita_DataGrid("SELECT id, nimi, hinta, varastosaldo FROM tuotteet ORDER BY nimi", "tuotteet", tuotelista);
-            Paivita_ComboBox("SELECT id, nimi FROM tuotteet ORDER BY nimi", cb_tuotelista);
+            Paivita_Tuotelista();
+            Paivita_TuoteCombos();
         }
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
@@ -191,25 +200,70 @@ namespace Sovelluskehitys_2025
                 return;
             }
 
-            using var cmd = yhteys.CreateCommand();
-            cmd.CommandText = "INSERT INTO asiakkaat (nimi, osoite, puhelin) VALUES (@nimi, @osoite, @puhelin);";
-            cmd.Parameters.AddWithValue("@nimi", asiakas_nimi.Text);
-            cmd.Parameters.AddWithValue("@osoite", asiakas_osoite.Text);
-            cmd.Parameters.AddWithValue("@puhelin", asiakas_puhelin.Text);
-            cmd.ExecuteNonQuery();
+            appService.AddCustomer(asiakas_nimi.Text, asiakas_osoite.Text, asiakas_puhelin.Text);
 
-
-            Paivita_DataGrid("SELECT id, nimi, osoite, puhelin FROM asiakkaat ORDER BY nimi", "asiakkaat", asiakaslista);
-            Paivita_ComboBox("SELECT id, nimi FROM asiakkaat ORDER BY nimi", cb_asiakas_tilaus);
+            Paivita_Asiakaslista();
+            Paivita_AsiakasCombo();
 
             asiakas_nimi.Clear();
             asiakas_osoite.Clear();
             asiakas_puhelin.Clear();
         }
 
+        private void Lisaa_Kategoria_Click(object sender, RoutedEventArgs e)
+        {
+            if (kategoria_nimi.Text == "")
+            {
+                MessageBox.Show("Täytä nimi ennen tallennusta.");
+                return;
+            }
+
+            string? kuvaus = string.IsNullOrWhiteSpace(kategoria_kuvaus.Text) ? null : kategoria_kuvaus.Text;
+            appService.AddCategory(kategoria_nimi.Text, kuvaus);
+
+            Paivita_Kategorialista();
+            Paivita_KategoriaCombos();
+            Paivita_Tuotelista();
+
+            kategoria_nimi.Clear();
+            kategoria_kuvaus.Clear();
+        }
+
+        private void Poista_Kategoria_Click(object sender, RoutedEventArgs e)
+        {
+            if (cb_kategoria_poisto.SelectedValue == null)
+            {
+                MessageBox.Show("Valitse poistettava kategoria ensin.");
+                return;
+            }
+
+            var vahvistus = MessageBox.Show(
+                "Haluatko varmasti poistaa kategorian?",
+                "Vahvista poisto",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (vahvistus != MessageBoxResult.Yes)
+                return;
+
+            long id = Convert.ToInt64(cb_kategoria_poisto.SelectedValue);
+            try
+            {
+                appService.DeleteCategory(id);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Kategorian poisto epäonnistui: " + ex.Message);
+                return;
+            }
+
+            Paivita_Kategorialista();
+            Paivita_KategoriaCombos();
+            Paivita_Tuotelista();
+        }
+
         private void Avaa_Menu_Click(object sender, RoutedEventArgs e)
         {
-            
+
             var dialog = new Microsoft.Win32.OpenFileDialog();
             dialog.DefaultExt = ".cpp";
             dialog.Filter = "C++ Files (*.cpp)|*.cpp|All Files (*.*)|*.*";
@@ -227,16 +281,18 @@ namespace Sovelluskehitys_2025
             {
                 DbInit.EnsureDatabase();
                 yhteys = DbInit.OpenConnection();
+                appService = new AppService(yhteys);
                 tilaviesti.Text = "Tietokantayhteys avattu onnistuneesti.";
 
-                Paivita_DataGrid("SELECT id, nimi, hinta, varastosaldo FROM tuotteet ORDER BY nimi", "tuotteet", tuotelista);
-                Paivita_DataGrid("SELECT id, nimi, osoite, puhelin FROM asiakkaat ORDER BY nimi", "asiakkaat", asiakaslista);
+                Paivita_Kategorialista();
+                Paivita_Tuotelista();
+                Paivita_Asiakaslista();
 
                 Paivita_Tilausnakyma();
 
-                Paivita_ComboBox("SELECT id, nimi FROM tuotteet ORDER BY nimi;", cb_tuotelista);
-                Paivita_ComboBox("SELECT id, nimi FROM tuotteet ORDER BY nimi;", cb_tuote_tilaus);
-                Paivita_ComboBox("SELECT id, nimi FROM asiakkaat ORDER BY nimi;", cb_asiakas_tilaus);
+                Paivita_TuoteCombos();
+                Paivita_AsiakasCombo();
+                Paivita_KategoriaCombos();
             }
             catch (Exception ex)
             {
@@ -270,88 +326,36 @@ namespace Sovelluskehitys_2025
 
             long tuoteId = (long)cb_tuote_tilaus.SelectedValue;
             long asiakasId = (long)cb_asiakas_tilaus.SelectedValue;
-            
+
             if (!int.TryParse(tb_tilausMaara.Text, out int maara) || maara <= 0)
             {
                 MessageBox.Show("Anna kelvollinen määrä (positiivinen kokonaisluku).");
                 return;
             }
 
-            using var tx = yhteys.BeginTransaction();
             try
             {
-                long tilausId;
-
-                using (var cmd = yhteys.CreateCommand())
-                {
-                    cmd.Transaction = tx;
-                    cmd.CommandText = "INSERT INTO tilaukset (asiakas_id) VALUES (@asiakas_id); SELECT last_insert_rowid();";
-                    cmd.Parameters.AddWithValue("@asiakas_id", asiakasId);
-                    tilausId = (long)cmd.ExecuteScalar();
-                }
-
-                using (var cmd = yhteys.CreateCommand())
-                {
-                    cmd.Transaction = tx;
-                    cmd.CommandText = @"
-                        INSERT INTO tilausrivit (tilaus_id, tuote_id, maara, rivihinta)
-                        VALUES (@tilaus_id, @tuote_id, @maara,
-                                (SELECT hinta FROM tuotteet WHERE id = @tuote_id) * @maara);";
-                    cmd.Parameters.AddWithValue("@tilaus_id", tilausId);
-                    cmd.Parameters.AddWithValue("@tuote_id", tuoteId);
-                    cmd.Parameters.AddWithValue("@maara", maara);
-                    cmd.ExecuteNonQuery();
-                }
-
-                using (var cmd = yhteys.CreateCommand())
-                {
-                    cmd.Transaction = tx;
-                    cmd.CommandText = @"
-                        UPDATE tuotteet
-                        SET varastosaldo = varastosaldo - @maara
-                        WHERE id = @tuote_id AND varastosaldo >= @maara;";
-                    cmd.Parameters.AddWithValue("@maara", maara);
-                    cmd.Parameters.AddWithValue("@tuote_id", tuoteId);
-
-                    int affected = cmd.ExecuteNonQuery();
-                    if (affected == 0)
-                        throw new Exception("Varastosaldo ei riitä tilaukseen.");
-                }
-
-                tx.Commit();
-
+                appService.CreateOrder(asiakasId, tuoteId, maara);
                 Paivita_Tilausnakyma();
             }
             catch (Exception ex)
             {
-                tx.Rollback();
                 MessageBox.Show("Tilauksen tallennus epäonnistui: " + ex.Message);
             }
         }
 
         private void Toimita_Tilaus_Click(object sender, RoutedEventArgs e)
-        { 
+        {
             DataRowView rivi = (DataRowView)((Button)e.Source).DataContext;
             long tilausId = Convert.ToInt64(rivi["id"]);
 
-            using var tx = yhteys.BeginTransaction();
             try
             {
-                // Päivitä tilaus toimitetuksi
-                using (var komento = yhteys.CreateCommand())
-                {
-                    komento.Transaction = tx;
-                    komento.CommandText = "UPDATE tilaukset SET toimitettu = 1 WHERE id = @id;";
-                    komento.Parameters.AddWithValue("@id", tilausId);
-                    komento.ExecuteNonQuery();
-                }
-
-                tx.Commit();
+                appService.SetDelivered(tilausId, true);
                 Paivita_Tilausnakyma();
             }
             catch (Exception ex)
             {
-                tx.Rollback();
                 MessageBox.Show("Tilauksen toimitus epäonnistui: " + ex.Message);
             }
         }
@@ -361,24 +365,13 @@ namespace Sovelluskehitys_2025
             DataRowView rivi = (DataRowView)((Button)e.Source).DataContext;
             long tilausId = Convert.ToInt64(rivi["id"]);
 
-            using var tx = yhteys.BeginTransaction();
             try
             {
-                // Merkitse tilaus peruutetuksi
-                using (var komento = yhteys.CreateCommand())
-                {
-                    komento.Transaction = tx;
-                    komento.CommandText = "UPDATE tilaukset SET toimitettu = 0 WHERE id = @id;";
-                    komento.Parameters.AddWithValue("@id", tilausId);
-                    komento.ExecuteNonQuery();
-                }
-
-                tx.Commit();
+                appService.SetDelivered(tilausId, false);
                 Paivita_Tilausnakyma();
             }
             catch (Exception ex)
             {
-                tx.Rollback();
                 MessageBox.Show("Tilauksen peruutus epäonnistui: " + ex.Message);
             }
         }
@@ -388,40 +381,21 @@ namespace Sovelluskehitys_2025
             DataRowView rivi = (DataRowView)((Button)e.Source).DataContext;
             long tilausId = Convert.ToInt64(rivi["id"]);
 
-            using var tx = yhteys.BeginTransaction();
+            var vahvistus = MessageBox.Show(
+                "Haluatko varmasti poistaa tilauksen?",
+                "Vahvista poisto",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (vahvistus != MessageBoxResult.Yes)
+                return;
+
             try
             {
-                using (var cmd = yhteys.CreateCommand())
-                {
-                    cmd.Transaction = tx;
-                    cmd.CommandText = @"
-                        UPDATE tuotteet
-                        SET varastosaldo = varastosaldo + (
-                            SELECT SUM(tr.maara)
-                            FROM tilausrivit tr
-                            WHERE tr.tuote_id = tuotteet.id AND tr.tilaus_id = @tilaus_id
-                        )
-                        WHERE id IN (
-                            SELECT tuote_id FROM tilausrivit WHERE tilaus_id = @tilaus_id
-                        );";
-                    cmd.Parameters.AddWithValue("@tilaus_id", tilausId);
-                    cmd.ExecuteNonQuery();
-                }
-
-                using (var cmd = yhteys.CreateCommand())
-                {
-                    cmd.Transaction = tx;
-                    cmd.CommandText = "DELETE FROM tilaukset WHERE id = @id;";
-                    cmd.Parameters.AddWithValue("@id", tilausId);
-                    cmd.ExecuteNonQuery();
-                }
-
-                tx.Commit();
+                appService.DeleteOrder(tilausId);
                 Paivita_Tilausnakyma();
             }
             catch (Exception ex)
             {
-                tx.Rollback();
                 MessageBox.Show("Tilauksen poisto epäonnistui: " + ex.Message);
             }
         }
@@ -452,68 +426,51 @@ namespace Sovelluskehitys_2025
                 return;
             }
 
-            int muutos = uusiMaara - vanhaMaara;
-            if (muutos == 0)
-            {
-                rivi.Row.AcceptChanges();
-                return;
-            }
-
             long riviId = Convert.ToInt64(rivi["rivi_id"]);
             long tuoteId = Convert.ToInt64(rivi["tuote_id"]);
 
-            using var tx = yhteys.BeginTransaction();
             try
             {
-                if (muutos > 0)
-                {
-                    using var saldo = yhteys.CreateCommand();
-                    saldo.Transaction = tx;
-                    saldo.CommandText = @"
-                        UPDATE tuotteet
-                        SET varastosaldo = varastosaldo - @muutos
-                        WHERE id = @tuote_id AND varastosaldo >= @muutos;";
-                    saldo.Parameters.AddWithValue("@muutos", muutos);
-                    saldo.Parameters.AddWithValue("@tuote_id", tuoteId);
-                    int affected = saldo.ExecuteNonQuery();
-                    if (affected == 0)
-                        throw new Exception("Varastosaldo ei riitä tilaukseen.");
-                }
-                else
-                {
-                    using var saldo = yhteys.CreateCommand();
-                    saldo.Transaction = tx;
-                    saldo.CommandText = @"
-                        UPDATE tuotteet
-                        SET varastosaldo = varastosaldo + @palauta
-                        WHERE id = @tuote_id;";
-                    saldo.Parameters.AddWithValue("@palauta", -muutos);
-                    saldo.Parameters.AddWithValue("@tuote_id", tuoteId);
-                    saldo.ExecuteNonQuery();
-                }
-
-                using (var cmd = yhteys.CreateCommand())
-                {
-                    cmd.Transaction = tx;
-                    cmd.CommandText = @"
-                        UPDATE tilausrivit
-                        SET maara = @maara,
-                            rivihinta = (SELECT hinta FROM tuotteet WHERE id = @tuote_id) * @maara
-                        WHERE id = @rivi_id;";
-                    cmd.Parameters.AddWithValue("@maara", uusiMaara);
-                    cmd.Parameters.AddWithValue("@tuote_id", tuoteId);
-                    cmd.Parameters.AddWithValue("@rivi_id", riviId);
-                    cmd.ExecuteNonQuery();
-                }
-
-                tx.Commit();
+                appService.UpdateOrderQuantity(riviId, tuoteId, uusiMaara, vanhaMaara);
                 rivi.Row.AcceptChanges();
             }
             catch (Exception ex)
             {
-                tx.Rollback();
                 MessageBox.Show("Tilauksen määrän päivitys epäonnistui: " + ex.Message);
                 Paivita_Tilausnakyma();
+            }
+        }
+
+        private void Tuotelista_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            if (e.EditAction != DataGridEditAction.Commit)
+                return;
+
+            if (e.Row.Item is not DataRowView rivi)
+                return;
+
+            Dispatcher.BeginInvoke(new Action(() => Paivita_TuoteKategoria(rivi)), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void Paivita_TuoteKategoria(DataRowView rivi)
+        {
+            if (rivi.Row.RowState != DataRowState.Modified)
+                return;
+
+            long tuoteId = Convert.ToInt64(rivi["id"]);
+            long? kategoriaId = null;
+            if (!rivi.Row.IsNull("kategoria_id"))
+                kategoriaId = Convert.ToInt64(rivi["kategoria_id"]);
+
+            try
+            {
+                appService.UpdateProductCategory(tuoteId, kategoriaId);
+                rivi.Row.AcceptChanges();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Tuotteen kategorian päivitys epäonnistui: " + ex.Message);
+                Paivita_Tuotelista();
             }
         }
 

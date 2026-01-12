@@ -7,6 +7,9 @@
         xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
         mc:Ignorable="d"
         Title="Tilaukset" Height="450" Width="800" Loaded="Window_Loaded" Closing="Window_Closing">
+    <mah:MetroWindow.Resources>
+        <CollectionViewSource x:Key="KategoriaOptions"/>
+    </mah:MetroWindow.Resources>
     <Grid>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Tiedosto">
@@ -28,21 +31,54 @@
 
                     <Button Content="Hae tiedot" HorizontalAlignment="Left" Margin="68,30,0,0" VerticalAlignment="Top" Height="40" Width="144" Click="Button_Click_1" RenderTransformOrigin="0.451,-0.747" Grid.Column="1" Grid.ColumnSpan="2"/>
 
-                    <DataGrid x:Name="tuotelista" Margin="68,93,62,79" Grid.Column="1" AutoGeneratingColumn="Tuotelista_AutoGeneratingColumn" Grid.ColumnSpan="2"/>
+                    <DataGrid x:Name="tuotelista"
+                              Margin="68,93,62,79"
+                              Grid.Column="1"
+                              Grid.ColumnSpan="2"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              RowEditEnding="Tuotelista_RowEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding id}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Nimi" Binding="{Binding nimi}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Hinta" Binding="{Binding hinta}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Varastosaldo" Binding="{Binding varastosaldo}" Width="*" IsReadOnly="True"/>
+                            <DataGridComboBoxColumn Header="Kategoria"
+                                                    SelectedValueBinding="{Binding kategoria_id, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    SelectedValuePath="id"
+                                                    DisplayMemberPath="nimi"
+                                                    ItemsSource="{Binding Source={StaticResource KategoriaOptions}}"
+                                                    Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </TabItem>
             <TabItem Header="Lisää/poista">
                 <Grid>
-                    <Button Content="Lisää tuote" HorizontalAlignment="Left" Margin="200,145,0,0" VerticalAlignment="Top" Height="40" Width="136" Click="Button_Click"/>
+                    <Button Content="Lisää tuote" HorizontalAlignment="Left" Margin="200,185,0,0" VerticalAlignment="Top" Height="40" Width="136" Click="Button_Click"/>
                     <TextBox x:Name="tekstikentta_1" HorizontalAlignment="Left" Margin="200,46,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="136" Height="20"/>
                     <TextBox x:Name="tekstikentta_2" HorizontalAlignment="Left" Margin="200,77,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="136" Height="20" RenderTransformOrigin="1.005,0.536"/>
                     <ComboBox x:Name="cb_tuotelista" HorizontalAlignment="Left" Margin="520,46,0,0" VerticalAlignment="Top" Width="120"/>
                     <TextBox x:Name="tekstikentta_3" HorizontalAlignment="Left" Margin="200,114,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="136" Height="20" RenderTransformOrigin="1.005,0.536"/>
+                    <ComboBox x:Name="cb_kategoria_tuote" HorizontalAlignment="Left" Margin="200,145,0,0" VerticalAlignment="Top" Width="136"/>
                     <Label Content="Nimi" HorizontalAlignment="Left" Margin="100,40,0,0" VerticalAlignment="Top" Width="86"/>
                     <Label Content="Hinta" HorizontalAlignment="Left" Margin="100,74,0,0" VerticalAlignment="Top" Width="86"/>
                     <Label Content="Varastosaldo" HorizontalAlignment="Left" Margin="100,111,0,0" VerticalAlignment="Top" Width="86"/>
+                    <Label Content="Kategoria" HorizontalAlignment="Left" Margin="100,140,0,0" VerticalAlignment="Top" Width="86"/>
                     <Button Content="Poista tuote" HorizontalAlignment="Left" Margin="533,143,0,0" VerticalAlignment="Top" Height="42" Width="107" Click="Button_Click_2"/>
                     <CheckBox x:Name="valinta_boksi" Content="Admin" HorizontalAlignment="Left" Margin="172,302,0,0" VerticalAlignment="Top" Checked="CheckBox_Checked" Unchecked="valinta_boksi_Unchecked"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Kategoriat">
+                <Grid>
+                    <DataGrid x:Name="kategorialista" Margin="72,193,72,20"/>
+                    <Button Content="Lisää kategoria" HorizontalAlignment="Left" Margin="317,139,0,0" VerticalAlignment="Top" Width="109" Height="33" Click="Lisaa_Kategoria_Click"/>
+                    <TextBox x:Name="kategoria_nimi" HorizontalAlignment="Left" Margin="210,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
+                    <TextBox x:Name="kategoria_kuvaus" HorizontalAlignment="Left" Margin="210,70,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="162"/>
+                    <ComboBox x:Name="cb_kategoria_poisto" HorizontalAlignment="Left" Margin="520,39,0,0" VerticalAlignment="Top" Width="120"/>
+                    <Button Content="Poista kategoria" HorizontalAlignment="Left" Margin="533,72,0,0" VerticalAlignment="Top" Height="33" Width="107" Click="Poista_Kategoria_Click"/>
+                    <Label Content="Nimi" HorizontalAlignment="Left" Margin="112,34,0,0" VerticalAlignment="Top" Width="86"/>
+                    <Label Content="Kuvaus" HorizontalAlignment="Left" Margin="112,65,0,0" VerticalAlignment="Top" Width="86"/>
                 </Grid>
             </TabItem>
             <TabItem x:Name="asiakkaat_tab" Header="Asiakkaat">
