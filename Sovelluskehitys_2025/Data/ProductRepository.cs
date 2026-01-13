@@ -21,7 +21,8 @@ namespace Sovelluskehitys_2025.Data
                        p.nimi,
                        p.hinta,
                        p.varastosaldo,
-                       p.kategoria_id
+                       p.kategoria_id,
+                       CASE WHEN p.varastosaldo <= 5 THEN 1 ELSE 0 END AS saldo_matala
                 FROM tuotteet p
                 ORDER BY p.nimi;";
             using var reader = cmd.ExecuteReader();
@@ -75,6 +76,52 @@ namespace Sovelluskehitys_2025.Data
             cmd.CommandText = "UPDATE tuotteet SET kategoria_id = @kategoria_id WHERE id = @id;";
             cmd.Parameters.AddWithValue("@id", productId);
             cmd.Parameters.AddWithValue("@kategoria_id", (object?)categoryId ?? DBNull.Value);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void UpdateProductDetails(long productId, string name, decimal price, long? categoryId)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidOperationException("Tuotenimi ei voi olla tyhjä.");
+            if (price < 0)
+                throw new InvalidOperationException("Hinta ei voi olla negatiivinen.");
+
+            using (var check = _connection.CreateCommand())
+            {
+                check.CommandText = @"
+                    SELECT 1
+                    FROM tuotteet
+                    WHERE lower(nimi) = lower(@nimi) AND id <> @id
+                    LIMIT 1;";
+                check.Parameters.AddWithValue("@nimi", name);
+                check.Parameters.AddWithValue("@id", productId);
+                if (check.ExecuteScalar() != null)
+                    throw new InvalidOperationException("Tuotenimi on jo olemassa.");
+            }
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE tuotteet
+                SET nimi = @nimi,
+                    hinta = @hinta,
+                    kategoria_id = @kategoria_id
+                WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@id", productId);
+            cmd.Parameters.AddWithValue("@nimi", name);
+            cmd.Parameters.AddWithValue("@hinta", price);
+            cmd.Parameters.AddWithValue("@kategoria_id", (object?)categoryId ?? DBNull.Value);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void AddStock(long productId, int amount)
+        {
+            if (amount <= 0)
+                throw new InvalidOperationException("Lisättävän saldon tulee olla positiivinen.");
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "UPDATE tuotteet SET varastosaldo = varastosaldo + @amount WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@amount", amount);
+            cmd.Parameters.AddWithValue("@id", productId);
             cmd.ExecuteNonQuery();
         }
     }

@@ -30,7 +30,7 @@ namespace Sovelluskehitys_2025
         {
             InitializeComponent();
 
-            ThemeManager.Current.ChangeTheme(this, "Light.Blue");
+            ThemeManager.Current.ChangeTheme(this, "Light.Purple");
             Alusta_Ostoskori();
         }
 
@@ -49,6 +49,12 @@ namespace Sovelluskehitys_2025
         private void Paivita_Tuotelista()
         {
             BindDataGrid(appService.GetProducts(), tuotelista);
+        }
+
+        private void Paivita_TopTuotteet()
+        {
+            if (FindName("top_tuotteet_lista") is DataGrid grid)
+                BindDataGrid(appService.GetTopProducts(3), grid);
         }
 
         private void Paivita_Asiakaslista()
@@ -110,6 +116,7 @@ namespace Sovelluskehitys_2025
         {
             Paivita_Tilauslistat();
             Paivita_Toimitetutlistat();
+            Paivita_TopTuotteet();
         }
 
         private void Alusta_Ostoskori()
@@ -186,6 +193,36 @@ namespace Sovelluskehitys_2025
             Paivita_Tuotelista();
         }
 
+        private void Lisaa_Saldo_Click(object sender, RoutedEventArgs e)
+        {
+            if (tuotelista.SelectedItem is not DataRowView rivi)
+            {
+                MessageBox.Show("Valitse tuote listasta ensin.");
+                return;
+            }
+
+            if (!int.TryParse(tb_saldo_lisays.Text.Trim(), out int lisays) || lisays <= 0)
+            {
+                MessageBox.Show("Anna lisättävä saldo (positiivinen kokonaisluku).");
+                return;
+            }
+
+            long tuoteId = Convert.ToInt64(rivi["id"]);
+            try
+            {
+                appService.AddStock(tuoteId, lisays);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Varastosaldon lisäys epäonnistui: " + ex.Message);
+                return;
+            }
+
+            Paivita_Tuotelista();
+            Paivita_TuoteCombos();
+            tb_saldo_lisays.Clear();
+        }
+
         private void Button_Click_2(object sender, RoutedEventArgs e)
         {
             if (cb_tuotelista.SelectedValue == null)
@@ -220,19 +257,44 @@ namespace Sovelluskehitys_2025
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Check päällä");
-            asiakkaat_tab.IsEnabled = true;
+            MessageBox.Show(
+                "Admin-oikeudet päällä.\nVoit lisätä/poistaa tuotteita ja kategorioita sekä muokata tuotteiden nimeä, hintaa ja kategoriaa.");
+            Paivita_AdminOikeudet();
         }
 
         private void valinta_boksi_Unchecked(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Check pois");
-            asiakkaat_tab.IsEnabled = false;
+            MessageBox.Show("Admin-oikeudet pois päältä.");
+            Paivita_AdminOikeudet();
         }
 
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
+        }
+
+        private void Paivita_AdminOikeudet()
+        {
+            bool isAdmin = valinta_boksi.IsChecked == true;
+
+            asiakkaat_tab.IsEnabled = true;
+            tuotelista.IsReadOnly = !isAdmin;
+
+            tekstikentta_1.IsEnabled = isAdmin;
+            tekstikentta_2.IsEnabled = isAdmin;
+            tekstikentta_3.IsEnabled = isAdmin;
+            cb_kategoria_tuote.IsEnabled = isAdmin;
+            btn_lisaa_tuote.IsEnabled = isAdmin;
+            btn_poista_tuote.IsEnabled = isAdmin;
+            kategoria_nimi.IsEnabled = isAdmin;
+            kategoria_kuvaus.IsEnabled = isAdmin;
+            cb_kategoria_poisto.IsEnabled = isAdmin;
+            btn_lisaa_kategoria.IsEnabled = isAdmin;
+            btn_poista_kategoria.IsEnabled = isAdmin;
+
+            asiakas_nimi.IsEnabled = true;
+            asiakas_osoite.IsEnabled = true;
+            asiakas_puhelin.IsEnabled = true;
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
@@ -360,6 +422,8 @@ namespace Sovelluskehitys_2025
                 Paivita_AsiakasCombo();
                 Paivita_KategoriaCombos();
                 Paivita_OstoskoriTila();
+                Paivita_TopTuotteet();
+                Paivita_AdminOikeudet();
             }
             catch (Exception ex)
             {
@@ -535,6 +599,8 @@ namespace Sovelluskehitys_2025
             {
                 appService.DeleteOrder(tilausId);
                 Paivita_Tilausnakyma();
+                Paivita_Tuotelista();
+                Paivita_TuoteCombos();
             }
             catch (Exception ex)
             {
@@ -622,6 +688,29 @@ namespace Sovelluskehitys_2025
             }
         }
 
+        private void Tuotelista_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not DataGrid grid)
+                return;
+
+            var row = ItemsControl.ContainerFromElement(grid, e.OriginalSource as DependencyObject) as DataGridRow;
+            if (row == null)
+            {
+                if (grid.SelectedItem != null)
+                {
+                    grid.SelectedItem = null;
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            if (row.IsSelected)
+            {
+                grid.SelectedItem = null;
+                e.Handled = true;
+            }
+        }
+
         private void Tuotelista_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             if (e.EditAction != DataGridEditAction.Commit)
@@ -630,27 +719,37 @@ namespace Sovelluskehitys_2025
             if (e.Row.Item is not DataRowView rivi)
                 return;
 
-            Dispatcher.BeginInvoke(new Action(() => Paivita_TuoteKategoria(rivi)), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(new Action(() => Paivita_TuoteTiedot(rivi)), System.Windows.Threading.DispatcherPriority.Background);
         }
 
-        private void Paivita_TuoteKategoria(DataRowView rivi)
+        private void Paivita_TuoteTiedot(DataRowView rivi)
         {
             if (rivi.Row.RowState != DataRowState.Modified)
                 return;
 
             long tuoteId = Convert.ToInt64(rivi["id"]);
+            string nimi = Convert.ToString(rivi["nimi"])?.Trim() ?? "";
+            decimal hinta = Convert.ToDecimal(rivi["hinta"]);
             long? kategoriaId = null;
             if (!rivi.Row.IsNull("kategoria_id"))
                 kategoriaId = Convert.ToInt64(rivi["kategoria_id"]);
 
+            if (nimi == "" || hinta < 0)
+            {
+                MessageBox.Show("Tuotenimi ei voi olla tyhjä ja hinta ei voi olla negatiivinen.");
+                Paivita_Tuotelista();
+                return;
+            }
+
             try
             {
-                appService.UpdateProductCategory(tuoteId, kategoriaId);
-                rivi.Row.AcceptChanges();
+                appService.UpdateProductDetails(tuoteId, nimi, hinta, kategoriaId);
+                Paivita_Tuotelista();
+                Paivita_TuoteCombos();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Tuotteen kategorian päivitys epäonnistui: " + ex.Message);
+                MessageBox.Show("Tuotteen päivitys epäonnistui: " + ex.Message);
                 Paivita_Tuotelista();
             }
         }

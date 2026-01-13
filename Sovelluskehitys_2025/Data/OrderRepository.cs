@@ -64,6 +64,25 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
+        public DataTable GetTopProducts(int limit)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = @"
+                SELECT tu.nimi as tuote,
+                       SUM(tr.maara) as myyty,
+                       SUM(tr.rivihinta) as myynti
+                FROM tilausrivit tr
+                JOIN tuotteet tu ON tu.id = tr.tuote_id
+                GROUP BY tu.id, tu.nimi
+                ORDER BY myyty DESC, tu.nimi
+                LIMIT @limit;";
+            cmd.Parameters.AddWithValue("@limit", limit);
+            using var reader = cmd.ExecuteReader();
+            var table = new DataTable("top_tuotteet");
+            table.Load(reader);
+            return table;
+        }
+
         public void CreateOrder(long customerId, long productId, int quantity)
         {
             using var tx = _connection.BeginTransaction();

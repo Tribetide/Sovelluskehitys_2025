@@ -29,6 +29,10 @@ namespace Sovelluskehitys_2025.Data
         public void DeleteProduct(long id) => _products.DeleteProduct(id);
         public void UpdateProductCategory(long productId, long? categoryId) =>
             _products.UpdateProductCategory(productId, categoryId);
+        public void UpdateProductDetails(long productId, string name, decimal price, long? categoryId) =>
+            _products.UpdateProductDetails(productId, name, price, categoryId);
+        public void AddStock(long productId, int amount) =>
+            _products.AddStock(productId, amount);
 
         public DataTable GetCustomers() => _customers.GetCustomers();
         public DataTable GetCustomerOptions() => _customers.GetCustomerOptions();
@@ -54,6 +58,7 @@ namespace Sovelluskehitys_2025.Data
             _orders.UpdateOrderQuantity(rowId, productId, newQty, oldQty);
         public void UpdateOrderQuantity(long rowId, int newQty) =>
             _orders.UpdateOrderQuantity(rowId, newQty);
+        public DataTable GetTopProducts(int limit) => _orders.GetTopProducts(limit);
 
         public List<TilausNakyma> GetOpenOrdersHierarchical()
         {
