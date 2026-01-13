@@ -35,6 +35,14 @@ namespace Sovelluskehitys_2025.Data
 
         public void AddCategory(string name, string? description)
         {
+            using (var check = _connection.CreateCommand())
+            {
+                check.CommandText = "SELECT 1 FROM kategoriat WHERE lower(nimi) = lower(@nimi) LIMIT 1;";
+                check.Parameters.AddWithValue("@nimi", name);
+                if (check.ExecuteScalar() != null)
+                    throw new InvalidOperationException("Kategoria on jo olemassa.");
+            }
+
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "INSERT INTO kategoriat (nimi, kuvaus) VALUES (@nimi, @kuvaus);";
             cmd.Parameters.AddWithValue("@nimi", name);

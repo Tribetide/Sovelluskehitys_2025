@@ -33,7 +33,7 @@ namespace Sovelluskehitys_2025.Data
         public DataTable GetProductOptions()
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = "SELECT id, nimi FROM tuotteet ORDER BY nimi;";
+            cmd.CommandText = "SELECT id, nimi, hinta FROM tuotteet ORDER BY nimi;";
             using var reader = cmd.ExecuteReader();
             var table = new DataTable("tuotteet");
             table.Load(reader);
@@ -42,6 +42,14 @@ namespace Sovelluskehitys_2025.Data
 
         public void AddProduct(string name, decimal price, int stock, long? categoryId)
         {
+            using (var check = _connection.CreateCommand())
+            {
+                check.CommandText = "SELECT 1 FROM tuotteet WHERE lower(nimi) = lower(@nimi) LIMIT 1;";
+                check.Parameters.AddWithValue("@nimi", name);
+                if (check.ExecuteScalar() != null)
+                    throw new InvalidOperationException("Tuote on jo olemassa.");
+            }
+
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO tuotteet (nimi, hinta, varastosaldo, kategoria_id)

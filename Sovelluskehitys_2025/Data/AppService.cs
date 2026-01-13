@@ -1,5 +1,9 @@
 using Microsoft.Data.Sqlite;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Sovelluskehitys_2025.Models;
 
 namespace Sovelluskehitys_2025.Data
 {
@@ -41,10 +45,64 @@ namespace Sovelluskehitys_2025.Data
         public DataTable GetDeliveredOrders() => _orders.GetDeliveredOrders();
         public void CreateOrder(long customerId, long productId, int quantity) =>
             _orders.CreateOrder(customerId, productId, quantity);
+        public void CreateOrderWithLines(long customerId, IReadOnlyList<(long productId, int quantity)> lines) =>
+            _orders.CreateOrderWithLines(customerId, lines);
         public void SetDelivered(long orderId, bool delivered) =>
             _orders.SetDelivered(orderId, delivered);
         public void DeleteOrder(long orderId) => _orders.DeleteOrder(orderId);
         public void UpdateOrderQuantity(long rowId, long productId, int newQty, int oldQty) =>
             _orders.UpdateOrderQuantity(rowId, productId, newQty, oldQty);
+        public void UpdateOrderQuantity(long rowId, int newQty) =>
+            _orders.UpdateOrderQuantity(rowId, newQty);
+
+        public List<TilausNakyma> GetOpenOrdersHierarchical()
+        {
+            var table = _orders.GetOpenOrders();
+            return MapOrders(table, delivered: false);
+        }
+
+        public List<TilausNakyma> GetDeliveredOrdersHierarchical()
+        {
+            var table = _orders.GetDeliveredOrders();
+            return MapOrders(table, delivered: true);
+        }
+
+        private static List<TilausNakyma> MapOrders(DataTable table, bool delivered)
+        {
+            var orders = new Dictionary<long, TilausNakyma>();
+
+            foreach (DataRow row in table.Rows)
+            {
+                long id = Convert.ToInt64(row["id"]);
+                if (!orders.TryGetValue(id, out var order))
+                {
+                    order = new TilausNakyma
+                    {
+                        Id = id,
+                        AsiakasNimi = Convert.ToString(row["asiakas"]) ?? "",
+                        Osoite = Convert.ToString(row["osoite"]) ?? "",
+                        Toimitettu = delivered
+                    };
+                    orders.Add(id, order);
+                }
+
+                var line = new TilausRiviNakyma
+                {
+                    RiviId = Convert.ToInt64(row["rivi_id"]),
+                    TuoteId = Convert.ToInt64(row["tuote_id"]),
+                    TuoteNimi = Convert.ToString(row["tuote"]) ?? "",
+                    Maara = Convert.ToInt32(row["maara"]),
+                    Rivihinta = Convert.ToDecimal(row["rivihinta"])
+                };
+                order.Rivit.Add(line);
+            }
+
+            foreach (var order in orders.Values)
+            {
+                order.Yhteensa = order.Rivit.Sum(r => r.Rivihinta);
+            }
+
+            return orders.Values.OrderByDescending(o => o.Id).ToList();
+        }
     }
 }

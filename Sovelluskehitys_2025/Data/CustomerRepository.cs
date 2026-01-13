@@ -34,6 +34,14 @@ namespace Sovelluskehitys_2025.Data
 
         public void AddCustomer(string name, string address, string phone)
         {
+            using (var check = _connection.CreateCommand())
+            {
+                check.CommandText = "SELECT 1 FROM asiakkaat WHERE lower(nimi) = lower(@nimi) LIMIT 1;";
+                check.Parameters.AddWithValue("@nimi", name);
+                if (check.ExecuteScalar() != null)
+                    throw new InvalidOperationException("Asiakas on jo olemassa.");
+            }
+
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "INSERT INTO asiakkaat (nimi, osoite, puhelin) VALUES (@nimi, @osoite, @puhelin);";
             cmd.Parameters.AddWithValue("@nimi", name);

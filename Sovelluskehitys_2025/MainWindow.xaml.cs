@@ -3,6 +3,7 @@ using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using Microsoft.Data.Sqlite;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Windows;
@@ -15,6 +16,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Sovelluskehitys_2025.Data;
+using Sovelluskehitys_2025.Models;
 
 namespace Sovelluskehitys_2025
 {
@@ -22,12 +24,14 @@ namespace Sovelluskehitys_2025
     {
         private SqliteConnection yhteys = null!;
         private AppService appService = null!;
+        private readonly DataTable ostoskori = new DataTable("ostoskori");
 
         public MainWindow()
         {
             InitializeComponent();
 
             ThemeManager.Current.ChangeTheme(this, "Light.Blue");
+            Alusta_Ostoskori();
         }
 
         private static void BindDataGrid(DataTable table, DataGrid grid)
@@ -94,12 +98,12 @@ namespace Sovelluskehitys_2025
 
         private void Paivita_Tilauslistat()
         {
-            BindDataGrid(appService.GetOpenOrders(), tilauslista);
+            tilauslista.ItemsSource = appService.GetOpenOrdersHierarchical();
         }
 
         private void Paivita_Toimitetutlistat()
         {
-            BindDataGrid(appService.GetDeliveredOrders(), toimitetut_lista);
+            toimitetut_lista.ItemsSource = appService.GetDeliveredOrdersHierarchical();
         }
 
         private void Paivita_Tilausnakyma()
@@ -108,27 +112,66 @@ namespace Sovelluskehitys_2025
             Paivita_Toimitetutlistat();
         }
 
+        private void Alusta_Ostoskori()
+        {
+            if (ostoskori.Columns.Count == 0)
+            {
+                ostoskori.Columns.Add("tuote_id", typeof(long));
+                ostoskori.Columns.Add("tuote", typeof(string));
+                ostoskori.Columns.Add("maara", typeof(int));
+                ostoskori.Columns.Add("yksikkohinta", typeof(decimal));
+                ostoskori.Columns.Add("hinta", typeof(decimal));
+            }
+
+            if (FindName("ostoskori_lista") is DataGrid grid)
+                grid.ItemsSource = ostoskori.DefaultView;
+        }
+
+        private void Tyhjenna_Ostoskori()
+        {
+            ostoskori.Rows.Clear();
+            Paivita_OstoskoriTila();
+        }
+
+        private void Paivita_OstoskoriTila()
+        {
+            if (cb_asiakas_tilaus != null)
+                cb_asiakas_tilaus.IsEnabled = ostoskori.Rows.Count == 0;
+        }
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            if (tekstikentta_1.Text == "" || tekstikentta_2.Text == "" || tekstikentta_3.Text == "")
+            string nimi = tekstikentta_1.Text.Trim();
+            string hintaTeksti = tekstikentta_2.Text.Trim();
+            string saldoTeksti = tekstikentta_3.Text.Trim();
+
+            if (nimi == "" || hintaTeksti == "" || saldoTeksti == "")
             {
                 MessageBox.Show("Täytä kaikki kentät ennen tallennusta.");
                 return;
             }
 
-            if (!decimal.TryParse(tekstikentta_2.Text, NumberStyles.Number, CultureInfo.GetCultureInfo("fi-FI"), out var hinta))
+            if (!decimal.TryParse(hintaTeksti, NumberStyles.Number, CultureInfo.GetCultureInfo("fi-FI"), out var hinta))
             {
                 MessageBox.Show("Hinta ei ole kelvollinen numero.");
                 return;
             }
-            if (!int.TryParse(tekstikentta_3.Text, out var saldo) || saldo < 0)
+            if (!int.TryParse(saldoTeksti, out var saldo) || saldo < 0)
             {
                 MessageBox.Show("Varastosaldo ei ole kelvollinen.");
                 return;
             }
 
             long? kategoriaId = GetSelectedCategoryId();
-            appService.AddProduct(tekstikentta_1.Text, hinta, saldo, kategoriaId);
+            try
+            {
+                appService.AddProduct(nimi, hinta, saldo, kategoriaId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Tuotteen lisäys epäonnistui: " + ex.Message);
+                return;
+            }
 
             Paivita_Tuotelista();
             Paivita_TuoteCombos();
@@ -194,13 +237,25 @@ namespace Sovelluskehitys_2025
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-            if (asiakas_nimi.Text == "" || asiakas_osoite.Text == "" || asiakas_puhelin.Text == "")
+            string nimi = asiakas_nimi.Text.Trim();
+            string osoite = asiakas_osoite.Text.Trim();
+            string puhelin = asiakas_puhelin.Text.Trim();
+
+            if (nimi == "" || osoite == "" || puhelin == "")
             {
                 MessageBox.Show("Täytä kaikki kentät ennen tallennusta.");
                 return;
             }
 
-            appService.AddCustomer(asiakas_nimi.Text, asiakas_osoite.Text, asiakas_puhelin.Text);
+            try
+            {
+                appService.AddCustomer(nimi, osoite, puhelin);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Asiakkaan lisäys epäonnistui: " + ex.Message);
+                return;
+            }
 
             Paivita_Asiakaslista();
             Paivita_AsiakasCombo();
@@ -212,14 +267,24 @@ namespace Sovelluskehitys_2025
 
         private void Lisaa_Kategoria_Click(object sender, RoutedEventArgs e)
         {
-            if (kategoria_nimi.Text == "")
+            string nimi = kategoria_nimi.Text.Trim();
+            string? kuvaus = string.IsNullOrWhiteSpace(kategoria_kuvaus.Text) ? null : kategoria_kuvaus.Text.Trim();
+
+            if (nimi == "")
             {
                 MessageBox.Show("Täytä nimi ennen tallennusta.");
                 return;
             }
 
-            string? kuvaus = string.IsNullOrWhiteSpace(kategoria_kuvaus.Text) ? null : kategoria_kuvaus.Text;
-            appService.AddCategory(kategoria_nimi.Text, kuvaus);
+            try
+            {
+                appService.AddCategory(nimi, kuvaus);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Kategorian lisäys epäonnistui: " + ex.Message);
+                return;
+            }
 
             Paivita_Kategorialista();
             Paivita_KategoriaCombos();
@@ -284,6 +349,7 @@ namespace Sovelluskehitys_2025
                 appService = new AppService(yhteys);
                 tilaviesti.Text = "Tietokantayhteys avattu onnistuneesti.";
 
+                Alusta_Ostoskori();
                 Paivita_Kategorialista();
                 Paivita_Tuotelista();
                 Paivita_Asiakaslista();
@@ -293,6 +359,7 @@ namespace Sovelluskehitys_2025
                 Paivita_TuoteCombos();
                 Paivita_AsiakasCombo();
                 Paivita_KategoriaCombos();
+                Paivita_OstoskoriTila();
             }
             catch (Exception ex)
             {
@@ -316,16 +383,15 @@ namespace Sovelluskehitys_2025
 
         }
 
-        private void Button_Click_4(object sender, RoutedEventArgs e)
+        private void Lisaa_Rivi_Click(object sender, RoutedEventArgs e)
         {
-            if (cb_tuote_tilaus.SelectedValue == null || cb_asiakas_tilaus.SelectedValue == null)
+            if (cb_tuote_tilaus.SelectedValue == null)
             {
-                MessageBox.Show("Valitse tuote ja asiakas ensin.");
+                MessageBox.Show("Valitse tuote ensin.");
                 return;
             }
 
             long tuoteId = (long)cb_tuote_tilaus.SelectedValue;
-            long asiakasId = (long)cb_asiakas_tilaus.SelectedValue;
 
             if (!int.TryParse(tb_tilausMaara.Text, out int maara) || maara <= 0)
             {
@@ -333,10 +399,80 @@ namespace Sovelluskehitys_2025
                 return;
             }
 
+            string tuoteNimi = "";
+            decimal yksikkohinta = 0m;
+            if (cb_tuote_tilaus.SelectedItem is DataRowView tuoteRow)
+            {
+                tuoteNimi = Convert.ToString(tuoteRow["nimi"]) ?? "";
+                if (tuoteRow.Row.Table.Columns.Contains("hinta"))
+                    yksikkohinta = Convert.ToDecimal(tuoteRow["hinta"]);
+            }
+
+            foreach (DataRow row in ostoskori.Rows)
+            {
+                if (Convert.ToInt64(row["tuote_id"]) != tuoteId)
+                    continue;
+
+                row["maara"] = Convert.ToInt32(row["maara"]) + maara;
+                row["hinta"] = Convert.ToDecimal(row["yksikkohinta"]) * Convert.ToInt32(row["maara"]);
+                tb_tilausMaara.Text = "1";
+                Paivita_OstoskoriTila();
+                return;
+            }
+
+            ostoskori.Rows.Add(tuoteId, tuoteNimi, maara, yksikkohinta, yksikkohinta * maara);
+            tb_tilausMaara.Text = "1";
+            Paivita_OstoskoriTila();
+        }
+
+        private void Poista_OstoskoriRivi_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { DataContext: DataRowView rivi })
+                return;
+
+            ostoskori.Rows.Remove(rivi.Row);
+            Paivita_OstoskoriTila();
+        }
+
+        private void Tee_Tilaus_Click(object sender, RoutedEventArgs e)
+        {
+            if (cb_asiakas_tilaus.SelectedValue == null)
+            {
+                MessageBox.Show("Valitse asiakas ennen tilauksen tekemistä.");
+                return;
+            }
+
+            if (ostoskori.Rows.Count == 0)
+            {
+                MessageBox.Show("Ostoskori on tyhjä.");
+                return;
+            }
+
+            long asiakasId = (long)cb_asiakas_tilaus.SelectedValue;
+            var rivit = new List<(long productId, int quantity)>();
+            foreach (DataRow row in ostoskori.Rows)
+            {
+                long productId = Convert.ToInt64(row["tuote_id"]);
+                int quantity = Convert.ToInt32(row["maara"]);
+                if (quantity <= 0)
+                    continue;
+
+                rivit.Add((productId, quantity));
+            }
+
+            if (rivit.Count == 0)
+            {
+                MessageBox.Show("Ostoskori on tyhjä.");
+                return;
+            }
+
             try
             {
-                appService.CreateOrder(asiakasId, tuoteId, maara);
+                appService.CreateOrderWithLines(asiakasId, rivit);
+                Tyhjenna_Ostoskori();
                 Paivita_Tilausnakyma();
+                Paivita_Tuotelista();
+                Paivita_TuoteCombos();
             }
             catch (Exception ex)
             {
@@ -346,8 +482,10 @@ namespace Sovelluskehitys_2025
 
         private void Toimita_Tilaus_Click(object sender, RoutedEventArgs e)
         {
-            DataRowView rivi = (DataRowView)((Button)e.Source).DataContext;
-            long tilausId = Convert.ToInt64(rivi["id"]);
+            if (sender is not Button { DataContext: TilausNakyma tilaus })
+                return;
+
+            long tilausId = tilaus.Id;
 
             try
             {
@@ -362,8 +500,10 @@ namespace Sovelluskehitys_2025
 
         private void Peruuta_Tilaus_Click(object sender, RoutedEventArgs e)
         {
-            DataRowView rivi = (DataRowView)((Button)e.Source).DataContext;
-            long tilausId = Convert.ToInt64(rivi["id"]);
+            if (sender is not Button { DataContext: TilausNakyma tilaus })
+                return;
+
+            long tilausId = tilaus.Id;
 
             try
             {
@@ -378,8 +518,10 @@ namespace Sovelluskehitys_2025
 
         private void Poista_Tilaus_Click(object sender, RoutedEventArgs e)
         {
-            DataRowView rivi = (DataRowView)((Button)e.Source).DataContext;
-            long tilausId = Convert.ToInt64(rivi["id"]);
+            if (sender is not Button { DataContext: TilausNakyma tilaus })
+                return;
+
+            long tilausId = tilaus.Id;
 
             var vahvistus = MessageBox.Show(
                 "Haluatko varmasti poistaa tilauksen?",
@@ -400,44 +542,83 @@ namespace Sovelluskehitys_2025
             }
         }
 
-        private void Tilauslista_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        private void TilausRivi_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             if (e.EditAction != DataGridEditAction.Commit)
                 return;
 
-            if (e.Row.Item is not DataRowView rivi)
+            if (e.Row.Item is not TilausRiviNakyma rivi)
                 return;
 
-            Dispatcher.BeginInvoke(new Action(() => Paivita_TilausMaara(rivi)), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(
+                new Action(() => Paivita_TilausRivi(rivi)),
+                System.Windows.Threading.DispatcherPriority.Background);
         }
 
-        private void Paivita_TilausMaara(DataRowView rivi)
+        private void Paivita_TilausRivi(TilausRiviNakyma rivi)
         {
-            if (rivi.Row.RowState != DataRowState.Modified)
-                return;
-
-            int uusiMaara = Convert.ToInt32(rivi["maara"]);
-            int vanhaMaara = Convert.ToInt32(rivi.Row["maara", DataRowVersion.Original]);
-
-            if (uusiMaara <= 0)
+            if (rivi.Maara <= 0)
             {
                 MessageBox.Show("Anna kelvollinen määrä (positiivinen kokonaisluku).");
                 Paivita_Tilausnakyma();
                 return;
             }
 
-            long riviId = Convert.ToInt64(rivi["rivi_id"]);
-            long tuoteId = Convert.ToInt64(rivi["tuote_id"]);
-
             try
             {
-                appService.UpdateOrderQuantity(riviId, tuoteId, uusiMaara, vanhaMaara);
-                rivi.Row.AcceptChanges();
+                appService.UpdateOrderQuantity(rivi.RiviId, rivi.Maara);
+                Paivita_Tilausnakyma();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Tilauksen määrän päivitys epäonnistui: " + ex.Message);
                 Paivita_Tilausnakyma();
+            }
+        }
+
+        private void Tilauslista_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not DataGrid grid)
+                return;
+
+            var row = ItemsControl.ContainerFromElement(grid, e.OriginalSource as DependencyObject) as DataGridRow;
+            if (row == null)
+            {
+                if (grid.SelectedItem != null)
+                {
+                    grid.SelectedItem = null;
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            if (row.IsSelected)
+            {
+                grid.SelectedItem = null;
+                e.Handled = true;
+            }
+        }
+
+        private void Toimitetutlista_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not DataGrid grid)
+                return;
+
+            var row = ItemsControl.ContainerFromElement(grid, e.OriginalSource as DependencyObject) as DataGridRow;
+            if (row == null)
+            {
+                if (grid.SelectedItem != null)
+                {
+                    grid.SelectedItem = null;
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            if (row.IsSelected)
+            {
+                grid.SelectedItem = null;
+                e.Handled = true;
             }
         }
 

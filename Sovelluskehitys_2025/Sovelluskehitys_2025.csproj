@@ -9,11 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Database\schema.sql" />
+    <None Remove="Sql\schema.sql" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Database\schema.sql">
+    <Content Include="Sql\schema.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

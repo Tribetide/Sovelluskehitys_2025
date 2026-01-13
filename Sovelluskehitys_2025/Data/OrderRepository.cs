@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System;
+using System.Collections.Generic;
 using System.Data;
 
 namespace Sovelluskehitys_2025.Data
@@ -23,6 +24,7 @@ namespace Sovelluskehitys_2025.Data
                        a.osoite as osoite,
                        tu.nimi as tuote,
                        tr.maara as maara,
+                       tr.rivihinta as rivihinta,
                        tr.tuote_id as tuote_id,
                        t.toimitettu as toimitettu
                 FROM tilaukset t
@@ -42,10 +44,13 @@ namespace Sovelluskehitys_2025.Data
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = @"
                 SELECT t.id as id,
+                       tr.id as rivi_id,
                        a.nimi as asiakas,
                        a.osoite as osoite,
                        tu.nimi as tuote,
                        tr.maara as maara,
+                       tr.rivihinta as rivihinta,
+                       tr.tuote_id as tuote_id,
                        t.toimitettu as toimitettu
                 FROM tilaukset t
                 JOIN asiakkaat a ON a.id = t.asiakas_id
@@ -100,6 +105,67 @@ namespace Sovelluskehitys_2025.Data
                     int affected = cmd.ExecuteNonQuery();
                     if (affected == 0)
                         throw new InvalidOperationException("Varastosaldo ei riitä tilaukseen.");
+                }
+
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        public void CreateOrderWithLines(long customerId, IReadOnlyList<(long productId, int quantity)> lines)
+        {
+            if (lines.Count == 0)
+                throw new ArgumentException("Tilauksessa täytyy olla vähintään yksi rivi.");
+
+            using var tx = _connection.BeginTransaction();
+            try
+            {
+                long orderId;
+
+                using (var cmd = _connection.CreateCommand())
+                {
+                    cmd.Transaction = tx;
+                    cmd.CommandText = "INSERT INTO tilaukset (asiakas_id) VALUES (@asiakas_id); SELECT last_insert_rowid();";
+                    cmd.Parameters.AddWithValue("@asiakas_id", customerId);
+                    orderId = (long)cmd.ExecuteScalar()!;
+                }
+
+                foreach (var (productId, quantity) in lines)
+                {
+                    if (quantity <= 0)
+                        throw new ArgumentException("Määrän tulee olla positiivinen.");
+
+                    using (var saldo = _connection.CreateCommand())
+                    {
+                        saldo.Transaction = tx;
+                        saldo.CommandText = @"
+                            UPDATE tuotteet
+                            SET varastosaldo = varastosaldo - @maara
+                            WHERE id = @tuote_id AND varastosaldo >= @maara;";
+                        saldo.Parameters.AddWithValue("@maara", quantity);
+                        saldo.Parameters.AddWithValue("@tuote_id", productId);
+
+                        int affected = saldo.ExecuteNonQuery();
+                        if (affected == 0)
+                            throw new InvalidOperationException("Varastosaldo ei riitä tilaukseen.");
+                    }
+
+                    using (var cmd = _connection.CreateCommand())
+                    {
+                        cmd.Transaction = tx;
+                        cmd.CommandText = @"
+                            INSERT INTO tilausrivit (tilaus_id, tuote_id, maara, rivihinta)
+                            VALUES (@tilaus_id, @tuote_id, @maara,
+                                    (SELECT hinta FROM tuotteet WHERE id = @tuote_id) * @maara);";
+                        cmd.Parameters.AddWithValue("@tilaus_id", orderId);
+                        cmd.Parameters.AddWithValue("@tuote_id", productId);
+                        cmd.Parameters.AddWithValue("@maara", quantity);
+                        cmd.ExecuteNonQuery();
+                    }
                 }
 
                 tx.Commit();
@@ -216,6 +282,22 @@ namespace Sovelluskehitys_2025.Data
                 tx.Rollback();
                 throw;
             }
+        }
+
+        public void UpdateOrderQuantity(long rowId, int newQty)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT tuote_id, maara FROM tilausrivit WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@id", rowId);
+
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+                throw new InvalidOperationException("Tilausriviä ei löydy.");
+
+            long productId = reader.GetInt64(0);
+            int oldQty = reader.GetInt32(1);
+
+            UpdateOrderQuantity(rowId, productId, newQty, oldQty);
         }
     }
 }

@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Sovelluskehitys_2025"
         xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
         mc:Ignorable="d"
-        Title="Tilaukset" Height="450" Width="800" Loaded="Window_Loaded" Closing="Window_Closing">
+        Title="Tilaukset" Height="620" Width="980" Loaded="Window_Loaded" Closing="Window_Closing">
     <mah:MetroWindow.Resources>
         <CollectionViewSource x:Key="KategoriaOptions"/>
     </mah:MetroWindow.Resources>
@@ -92,47 +92,104 @@
             </TabItem>
             <TabItem x:Name="tilaukset_tab" Header="Tilaukset" VerticalAlignment="Center">
                 <Grid>
-                    <DataGrid x:Name="tilauslista" Margin="0,112,0,36" AutoGenerateColumns="False" CanUserAddRows="False" RowEditEnding="Tilauslista_RowEditEnding">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="220"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,12,20,0">
+                        <TextBlock Text="Tuote" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="cb_tuote_tilaus" Width="140" Margin="0,0,12,0"/>
+                        <TextBlock Text="Asiakas" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="cb_asiakas_tilaus" Width="160" Margin="0,0,12,0"/>
+                        <TextBlock Text="Määrä" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox x:Name="tb_tilausMaara" Text="1" Width="50" Margin="0,0,12,0"/>
+                        <Button Content="Lisää rivi" Width="100" Margin="0,0,8,0" Click="Lisaa_Rivi_Click"/>
+                        <Button Content="Tee tilaus" Width="100" Click="Tee_Tilaus_Click"/>
+                    </StackPanel>
+
+                    <GroupBox Header="Ostoskori" Grid.Row="1" Margin="20,8,20,8">
+                        <DataGrid x:Name="ostoskori_lista" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*"/>
+                                <DataGridTextColumn Header="Määrä" Binding="{Binding maara}" Width="Auto"/>
+                                <DataGridTextColumn Header="Hinta" Binding="{Binding hinta}" Width="Auto"/>
+                                <DataGridTemplateColumn Width="Auto">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="Poista" Padding="6,2" Click="Poista_OstoskoriRivi_Click"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </GroupBox>
+
+                    <DataGrid x:Name="tilauslista"
+                              Grid.Row="2"
+                              Margin="0,8,0,36"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="True"
+                              MinColumnWidth="90"
+                              PreviewMouseLeftButtonDown="Tilauslista_PreviewMouseLeftButtonDown"
+                              RowDetailsVisibilityMode="VisibleWhenSelected">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding id}" Width="*" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Asiakas" Binding="{Binding asiakas}" Width="*" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Osoite" Binding="{Binding osoite}" Width="*" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Määrä" Binding="{Binding maara}" Width="*"/>
-                            <DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding Id}" Width="120" MinWidth="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Asiakas" Binding="{Binding AsiakasNimi}" Width="2*" MinWidth="160" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Osoite" Binding="{Binding Osoite}" Width="3*" MinWidth="220" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Yhteensä" Binding="{Binding Yhteensa, StringFormat=N2}" Width="140" MinWidth="120" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Width="150" MinWidth="140">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Name="toimita_tilaus" Content="Toimita" Click="Toimita_Tilaus_Click"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn>
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Button Name="poista_tilaus" Content="Poista" Click="Poista_Tilaus_Click"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Name="toimita_tilaus" Content="Toimita" Margin="2,0" Click="Toimita_Tilaus_Click"/>
+                                            <Button Name="poista_tilaus" Content="Poista" Margin="2,0" Click="Poista_Tilaus_Click"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
+                        <DataGrid.RowDetailsTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="LightGray" BorderThickness="1" Background="WhiteSmoke" Margin="10,5,10,10" Padding="8">
+                                    <DataGrid ItemsSource="{Binding Rivit}"
+                                              AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              RowEditEnding="TilausRivi_RowEditEnding"
+                                              MinColumnWidth="90"
+                                              BorderThickness="0"
+                                              Background="Transparent"
+                                              HeadersVisibility="Column">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Tuote" Binding="{Binding TuoteNimi}" Width="2*" MinWidth="220" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Määrä" Binding="{Binding Maara}" Width="120" MinWidth="100"/>
+                                            <DataGridTextColumn Header="Hinta" Binding="{Binding Rivihinta, StringFormat=N2}" Width="140" MinWidth="120" IsReadOnly="True"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+                            </DataTemplate>
+                        </DataGrid.RowDetailsTemplate>
                     </DataGrid>
-                    <ComboBox x:Name="cb_tuote_tilaus" HorizontalAlignment="Left" Margin="106,43,0,0" VerticalAlignment="Top" Width="120"/>
-                    <ComboBox x:Name="cb_asiakas_tilaus" HorizontalAlignment="Left" Margin="277,43,0,0" VerticalAlignment="Top" Width="120" RenderTransformOrigin="-0.05,0.095"/>
-                    <Button Content="Lisää tilaus" HorizontalAlignment="Left" Margin="497,43,0,0" VerticalAlignment="Top" Height="33" Width="116" Click="Button_Click_4"/>
-                    <TextBlock Text="Määrä" Margin="420,20,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                    <TextBox x:Name="tb_tilausMaara" Text="1" Margin="420,43,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Width="50"/>
-
                 </Grid>
             </TabItem>
             <TabItem Header="Toimitetut">
                 <Grid>
-                    <DataGrid x:Name="toimitetut_lista" Margin="70,93,70,52" AutoGenerateColumns="False" CanUserAddRows="False">
+                    <DataGrid x:Name="toimitetut_lista"
+                              Margin="20,20,20,20"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="True"
+                              MinColumnWidth="90"
+                              PreviewMouseLeftButtonDown="Toimitetutlista_PreviewMouseLeftButtonDown"
+                              RowDetailsVisibilityMode="VisibleWhenSelected">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding id}" Width="*"/>
-                            <DataGridTextColumn Header="Asiakas" Binding="{Binding asiakas}" Width="*"/>
-                            <DataGridTextColumn Header="Osoite" Binding="{Binding osoite}" Width="*"/>
-                            <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*"/>
-                            <DataGridTextColumn Header="Määrä" Binding="{Binding maara}" Width="*" IsReadOnly="True"/>
-                            <DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Tilaus ID" Binding="{Binding Id}" Width="120" MinWidth="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Asiakas" Binding="{Binding AsiakasNimi}" Width="2*" MinWidth="160" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Osoite" Binding="{Binding Osoite}" Width="3*" MinWidth="220" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Yhteensä" Binding="{Binding Yhteensa, StringFormat=N2}" Width="140" MinWidth="120" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Width="140" MinWidth="120">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Button Name="peruuta_tilaus" Content="Peruuta" Click="Peruuta_Tilaus_Click"/>
@@ -140,6 +197,25 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
+                        <DataGrid.RowDetailsTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="LightGray" BorderThickness="1" Background="WhiteSmoke" Margin="10,5,10,10" Padding="8">
+                                    <DataGrid ItemsSource="{Binding Rivit}"
+                                              AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              BorderThickness="0"
+                                              Background="Transparent"
+                                              HeadersVisibility="Column"
+                                              MinColumnWidth="90">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Tuote" Binding="{Binding TuoteNimi}" Width="2*" MinWidth="220" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Määrä" Binding="{Binding Maara}" Width="120" MinWidth="100" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Hinta" Binding="{Binding Rivihinta, StringFormat=N2}" Width="140" MinWidth="120" IsReadOnly="True"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+                            </DataTemplate>
+                        </DataGrid.RowDetailsTemplate>
                     </DataGrid>
                 </Grid>
             </TabItem>

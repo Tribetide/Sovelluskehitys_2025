@@ -9,7 +9,7 @@ public static class DbInit
 
     // schema.sql kopioidaan Output-kansioon (Properties: Content + Copy if newer)
     private static string SchemaPath =>
-        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Database", "schema.sql");
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sql", "schema.sql");
 
     public static string DbFilePath =>
         Path.Combine(
@@ -28,7 +28,7 @@ public static class DbInit
         {
             throw new FileNotFoundException(
                 $"schema.sql puuttuu Output-kansiosta: {SchemaPath}. " +
-                "Aseta Database/schema.sql -> Build Action = Content ja Copy to Output Directory = Copy if newer."
+                "Aseta Sql/schema.sql -> Build Action = Content ja Copy to Output Directory = Copy if newer."
             );
         }
 
