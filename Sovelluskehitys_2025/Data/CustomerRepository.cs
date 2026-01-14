@@ -3,6 +3,7 @@ using System.Data;
 
 namespace Sovelluskehitys_2025.Data
 {
+    // Asiakasdatan käsittely (listaus + lisäys).
     public class CustomerRepository
     {
         private readonly SqliteConnection _connection;
@@ -12,6 +13,7 @@ namespace Sovelluskehitys_2025.Data
             _connection = connection;
         }
 
+        // Täysi asiakaslista taulunäkymään.
         public DataTable GetCustomers()
         {
             using var cmd = _connection.CreateCommand();
@@ -22,6 +24,7 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
+        // Suppea asiakaslista pudotusvalikoihin.
         public DataTable GetCustomerOptions()
         {
             using var cmd = _connection.CreateCommand();
@@ -32,10 +35,12 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
+        // Lisää uusi asiakas ja tarkistaa duplikaattinimet.
         public void AddCustomer(string name, string address, string phone)
         {
             using (var check = _connection.CreateCommand())
             {
+                // Iso- ja pienikirjaimet ohittava duplikaattitarkistus.
                 check.CommandText = "SELECT 1 FROM asiakkaat WHERE lower(nimi) = lower(@nimi) LIMIT 1;";
                 check.Parameters.AddWithValue("@nimi", name);
                 if (check.ExecuteScalar() != null)

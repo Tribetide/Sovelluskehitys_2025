@@ -4,6 +4,7 @@ using System.Data;
 
 namespace Sovelluskehitys_2025.Data
 {
+    // Tuotedatan käsittely (luonti/luku/päivitys/poisto + varastosaldo).
     public class ProductRepository
     {
         private readonly SqliteConnection _connection;
@@ -13,6 +14,7 @@ namespace Sovelluskehitys_2025.Data
             _connection = connection;
         }
 
+        // Tuotelista käyttöliittymälle, sisältää matalan saldon lipun korostusta varten.
         public DataTable GetProducts()
         {
             using var cmd = _connection.CreateCommand();
@@ -22,6 +24,7 @@ namespace Sovelluskehitys_2025.Data
                        p.hinta,
                        p.varastosaldo,
                        p.kategoria_id,
+                       -- Lippu käyttöliittymän korostusta varten, kun saldo on matala.
                        CASE WHEN p.varastosaldo <= 5 THEN 1 ELSE 0 END AS saldo_matala
                 FROM tuotteet p
                 ORDER BY p.nimi;";
@@ -41,10 +44,12 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
+        // Lisää uuden tuotteen ja estää duplikaattinimet.
         public void AddProduct(string name, decimal price, int stock, long? categoryId)
         {
             using (var check = _connection.CreateCommand())
             {
+                // Iso- ja pienikirjaimet ohittava nimen tarkistus.
                 check.CommandText = "SELECT 1 FROM tuotteet WHERE lower(nimi) = lower(@nimi) LIMIT 1;";
                 check.Parameters.AddWithValue("@nimi", name);
                 if (check.ExecuteScalar() != null)
@@ -62,6 +67,7 @@ namespace Sovelluskehitys_2025.Data
             cmd.ExecuteNonQuery();
         }
 
+        // Poistaa tuotteen id:n perusteella.
         public void DeleteProduct(long id)
         {
             using var cmd = _connection.CreateCommand();
@@ -70,6 +76,7 @@ namespace Sovelluskehitys_2025.Data
             cmd.ExecuteNonQuery();
         }
 
+        // Päivittää vain kategorian (käytetään käyttöliittymän comboboxissa).
         public void UpdateProductCategory(long productId, long? categoryId)
         {
             using var cmd = _connection.CreateCommand();
@@ -79,8 +86,10 @@ namespace Sovelluskehitys_2025.Data
             cmd.ExecuteNonQuery();
         }
 
+        // Päivittää nimen/hinnan/kategorian, validoi ja estää duplikaatit.
         public void UpdateProductDetails(long productId, string name, decimal price, long? categoryId)
         {
+            // Vartioehdot pitävät tietokannan eheänä.
             if (string.IsNullOrWhiteSpace(name))
                 throw new InvalidOperationException("Tuotenimi ei voi olla tyhjä.");
             if (price < 0)
@@ -88,6 +97,7 @@ namespace Sovelluskehitys_2025.Data
 
             using (var check = _connection.CreateCommand())
             {
+                // Vältä duplikaatit uudelleennimeämisessä.
                 check.CommandText = @"
                     SELECT 1
                     FROM tuotteet
@@ -113,6 +123,7 @@ namespace Sovelluskehitys_2025.Data
             cmd.ExecuteNonQuery();
         }
 
+        // Lisää tuotteen varastosaldoa (vain positiivinen määrä).
         public void AddStock(long productId, int amount)
         {
             if (amount <= 0)

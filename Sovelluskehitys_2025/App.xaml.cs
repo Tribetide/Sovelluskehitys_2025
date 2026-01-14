@@ -5,10 +5,11 @@ using System.Windows;
 namespace Sovelluskehitys_2025
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// Vuorovaikutuslogiikka App.xaml-tiedostolle
     /// </summary>
     public partial class App : Application
     {
+        // Ei vielä omaa käynnistyslogiikkaa; varattu tulevaa laajennusta varten.
     }
 
 }

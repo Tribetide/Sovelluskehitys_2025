@@ -1,17 +1,21 @@
+-- Sovelluskehitys_2025 -tietokannan skeema.
 PRAGMA foreign_keys = ON;
 
+-- Poisto riippuvuuksien mukaisessa järjestyksessä.
 DROP TABLE IF EXISTS tilausrivit;
 DROP TABLE IF EXISTS tilaukset;
 DROP TABLE IF EXISTS tuotteet;
 DROP TABLE IF EXISTS asiakkaat;
 DROP TABLE IF EXISTS kategoriat;
 
+-- Tuotekategoriat.
 CREATE TABLE kategoriat (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     nimi        TEXT NOT NULL,
     kuvaus      TEXT
 );
 
+-- Tuotteet, joilla on valinnainen kategoria.
 CREATE TABLE tuotteet (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     nimi         TEXT NOT NULL,
@@ -21,6 +25,7 @@ CREATE TABLE tuotteet (
     FOREIGN KEY (kategoria_id) REFERENCES kategoriat(id) ON DELETE SET NULL
 );
 
+-- Asiakkaat.
 CREATE TABLE asiakkaat (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     nimi    TEXT NOT NULL,
@@ -28,14 +33,17 @@ CREATE TABLE asiakkaat (
     puhelin TEXT NOT NULL
 );
 
+-- Tilaukset (otsikko).
 CREATE TABLE tilaukset (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     asiakas_id INTEGER NOT NULL,
     tilaus_pvm TEXT NOT NULL DEFAULT (datetime('now')),
+    toimitus_pvm TEXT NULL,
     toimitettu INTEGER NOT NULL DEFAULT 0 CHECK (toimitettu IN (0,1)),
     FOREIGN KEY (asiakas_id) REFERENCES asiakkaat(id) ON DELETE CASCADE
 );
 
+-- Tilausrivit (rivitiedot).
 CREATE TABLE tilausrivit (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     tilaus_id INTEGER NOT NULL,

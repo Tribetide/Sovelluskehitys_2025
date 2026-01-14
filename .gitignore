@@ -11,6 +11,7 @@
 *.sln.docstates
 **/*.db
 **/*.sqbpro
+*.rtf
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -363,3 +364,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# MSIX build output
+/Sovelluskehitys_Setup/bin/
+/Sovelluskehitys_Setup/obj/
+/Sovelluskehitys_Setup/AppPackages/
+/Sovelluskehitys_Setup/BundleArtifacts/
+/Sovelluskehitys_Setup/*.user
+/Sovelluskehitys_Setup/*.pfx
+/Sovelluskehitys_Setup/*.cache
+# End of .gitignore

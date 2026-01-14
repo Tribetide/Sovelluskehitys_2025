@@ -20,10 +20,13 @@ using Sovelluskehitys_2025.Models;
 
 namespace Sovelluskehitys_2025
 {
+    // Pääikkunan käyttöliittymälogiikka ja tapahtumakäsittelijät.
     public partial class MainWindow : MetroWindow
     {
+        // Tietokantayhteys ja palvelukerros käyttöliittymätoiminnoille.
         private SqliteConnection yhteys = null!;
         private AppService appService = null!;
+        // Muistinvarainen ostoskori nykyiselle tilaukselle (Tilaukset-välilehti).
         private readonly DataTable ostoskori = new DataTable("ostoskori");
 
         public MainWindow()
@@ -34,11 +37,13 @@ namespace Sovelluskehitys_2025
             Alusta_Ostoskori();
         }
 
+        // DataTable -> käyttöliittymä -apumetodit.
         private static void BindDataGrid(DataTable table, DataGrid grid)
         {
             grid.ItemsSource = table.DefaultView;
         }
 
+        // ComboBox-sidonnan apu (id/nimi).
         private static void BindComboBox(DataTable table, ComboBox combo)
         {
             combo.ItemsSource = table.DefaultView;
@@ -46,6 +51,7 @@ namespace Sovelluskehitys_2025
             combo.SelectedValuePath = "id";
         }
 
+        // Käyttöliittymän päivitysmetodit.
         private void Paivita_Tuotelista()
         {
             BindDataGrid(appService.GetProducts(), tuotelista);
@@ -83,6 +89,7 @@ namespace Sovelluskehitys_2025
             var kategoriat = appService.GetCategoryOptions();
             BindComboBox(kategoriat, cb_kategoria_poisto);
 
+            // Lisää "Ei kategoriaa" -vaihtoehto tuote-Comboboxiin.
             var valinta = kategoriat.Copy();
             var emptyRow = valinta.NewRow();
             emptyRow["id"] = DBNull.Value;
@@ -96,6 +103,7 @@ namespace Sovelluskehitys_2025
 
         private long? GetSelectedCategoryId()
         {
+            // Tulkitse tyhjä valinta nulliksi.
             if (cb_kategoria_tuote.SelectedValue == null || cb_kategoria_tuote.SelectedValue is DBNull)
                 return null;
 
@@ -112,6 +120,7 @@ namespace Sovelluskehitys_2025
             toimitetut_lista.ItemsSource = appService.GetDeliveredOrdersHierarchical();
         }
 
+        // Päivitä kaikki tilausnäkymät (avoimet, toimitetut, raportti).
         private void Paivita_Tilausnakyma()
         {
             Paivita_Tilauslistat();
@@ -119,6 +128,7 @@ namespace Sovelluskehitys_2025
             Paivita_TopTuotteet();
         }
 
+        // Ostoskorin tila ja näkymäsidonnat.
         private void Alusta_Ostoskori()
         {
             if (ostoskori.Columns.Count == 0)
@@ -136,16 +146,19 @@ namespace Sovelluskehitys_2025
 
         private void Tyhjenna_Ostoskori()
         {
+            // Tyhjennä rivit ja salli asiakkaan valinta uudelleen.
             ostoskori.Rows.Clear();
             Paivita_OstoskoriTila();
         }
 
         private void Paivita_OstoskoriTila()
         {
+            // Estä asiakkaan vaihto, kun rivejä on lisätty.
             if (cb_asiakas_tilaus != null)
                 cb_asiakas_tilaus.IsEnabled = ostoskori.Rows.Count == 0;
         }
 
+        // Tuotteet: lisäys (Lisää/poista-välilehti).
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             string nimi = tekstikentta_1.Text.Trim();
@@ -188,11 +201,13 @@ namespace Sovelluskehitys_2025
             tekstikentta_3.Clear();
         }
 
+        // Tuotteet: hae tiedot -nappi.
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
             Paivita_Tuotelista();
         }
 
+        // Tuotteet: varastosaldon lisäys (sallittu ilman ylläpitäjää).
         private void Lisaa_Saldo_Click(object sender, RoutedEventArgs e)
         {
             if (tuotelista.SelectedItem is not DataRowView rivi)
@@ -223,6 +238,7 @@ namespace Sovelluskehitys_2025
             tb_saldo_lisays.Clear();
         }
 
+        // Tuotteet: poisto (ylläpitäjä).
         private void Button_Click_2(object sender, RoutedEventArgs e)
         {
             if (cb_tuotelista.SelectedValue == null)
@@ -255,6 +271,7 @@ namespace Sovelluskehitys_2025
             Paivita_TuoteCombos();
         }
 
+        // Ylläpitäjätilan vaihto: lukitsee/avaa muokkaustoiminnot.
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
         {
             MessageBox.Show(
@@ -278,6 +295,7 @@ namespace Sovelluskehitys_2025
             bool isAdmin = valinta_boksi.IsChecked == true;
 
             asiakkaat_tab.IsEnabled = true;
+        // Tuotelistan muokkaus on vain ylläpitäjälle.
             tuotelista.IsReadOnly = !isAdmin;
 
             tekstikentta_1.IsEnabled = isAdmin;
@@ -297,6 +315,7 @@ namespace Sovelluskehitys_2025
             asiakas_puhelin.IsEnabled = true;
         }
 
+        // Asiakkaat: lisäys.
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             string nimi = asiakas_nimi.Text.Trim();
@@ -327,6 +346,7 @@ namespace Sovelluskehitys_2025
             asiakas_puhelin.Clear();
         }
 
+        // Kategoriat: lisäys.
         private void Lisaa_Kategoria_Click(object sender, RoutedEventArgs e)
         {
             string nimi = kategoria_nimi.Text.Trim();
@@ -356,6 +376,7 @@ namespace Sovelluskehitys_2025
             kategoria_kuvaus.Clear();
         }
 
+        // Kategoriat: poisto.
         private void Poista_Kategoria_Click(object sender, RoutedEventArgs e)
         {
             if (cb_kategoria_poisto.SelectedValue == null)
@@ -388,6 +409,7 @@ namespace Sovelluskehitys_2025
             Paivita_Tuotelista();
         }
 
+        // Valikko: yksinkertainen tiedoston avausdemo (näyttää polun).
         private void Avaa_Menu_Click(object sender, RoutedEventArgs e)
         {
 
@@ -402,6 +424,7 @@ namespace Sovelluskehitys_2025
             }
         }
 
+        // Sovellus käynnistyy: avaa tietokantayhteys ja päivitä kaikki listat.
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             try
@@ -447,6 +470,7 @@ namespace Sovelluskehitys_2025
 
         }
 
+        // Tilaukset: lisää rivi ostoskoriin.
         private void Lisaa_Rivi_Click(object sender, RoutedEventArgs e)
         {
             if (cb_tuote_tilaus.SelectedValue == null)
@@ -477,6 +501,7 @@ namespace Sovelluskehitys_2025
                 if (Convert.ToInt64(row["tuote_id"]) != tuoteId)
                     continue;
 
+                // Yhdistä olemassa olevaan riviin, jos sama tuote on jo ostoskorissa.
                 row["maara"] = Convert.ToInt32(row["maara"]) + maara;
                 row["hinta"] = Convert.ToDecimal(row["yksikkohinta"]) * Convert.ToInt32(row["maara"]);
                 tb_tilausMaara.Text = "1";
@@ -498,6 +523,7 @@ namespace Sovelluskehitys_2025
             Paivita_OstoskoriTila();
         }
 
+        // Tilaukset: tallenna ostoskori tilaukseksi.
         private void Tee_Tilaus_Click(object sender, RoutedEventArgs e)
         {
             if (cb_asiakas_tilaus.SelectedValue == null)
@@ -608,6 +634,7 @@ namespace Sovelluskehitys_2025
             }
         }
 
+        // Tilaukset: rivin määrän muutos (suora muokkaus).
         private void TilausRivi_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             if (e.EditAction != DataGridEditAction.Commit)
@@ -616,6 +643,7 @@ namespace Sovelluskehitys_2025
             if (e.Row.Item is not TilausRiviNakyma rivi)
                 return;
 
+            // Viivytä päivitystä, kunnes muokkaus on vahvistettu.
             Dispatcher.BeginInvoke(
                 new Action(() => Paivita_TilausRivi(rivi)),
                 System.Windows.Threading.DispatcherPriority.Background);
@@ -642,6 +670,7 @@ namespace Sovelluskehitys_2025
             }
         }
 
+        // DataGrid-valinnan poisto: sallii valinnan poistamisen klikkaamalla valittua riviä.
         private void Tilauslista_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not DataGrid grid)
@@ -711,6 +740,7 @@ namespace Sovelluskehitys_2025
             }
         }
 
+        // Tuotteet: nimi/hinta/kategoria -muutokset (ylläpitäjä).
         private void Tuotelista_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             if (e.EditAction != DataGridEditAction.Commit)
@@ -719,6 +749,7 @@ namespace Sovelluskehitys_2025
             if (e.Row.Item is not DataRowView rivi)
                 return;
 
+            // Viivytä päivitystä, kunnes rivimuutos on vahvistettu.
             Dispatcher.BeginInvoke(new Action(() => Paivita_TuoteTiedot(rivi)), System.Windows.Threading.DispatcherPriority.Background);
         }
 

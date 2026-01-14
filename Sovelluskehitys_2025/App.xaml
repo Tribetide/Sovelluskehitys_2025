@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Sovelluskehitys_2025"
              StartupUri="MainWindow.xaml">
+    <!-- Sovellustason resurssit ja käynnistysikkuna. -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

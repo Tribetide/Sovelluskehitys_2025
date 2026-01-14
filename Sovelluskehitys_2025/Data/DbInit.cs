@@ -2,15 +2,18 @@ using Microsoft.Data.Sqlite;
 using System;
 using System.IO;
 
+// SQLite-tietokannan alustus ja yhteysapu.
 public static class DbInit
 {
+    // AppData\Local-alikansio tietokantatiedostolle.
     private const string AppFolder = "Sovelluskehitys_2025";
     private const string DbFileName = "sovelluskehitys.db";
 
-    // schema.sql kopioidaan Output-kansioon (Properties: Content + Copy if newer)
+    // schema.sql kopioidaan output-kansioon (Build Action: Content).
     private static string SchemaPath =>
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sql", "schema.sql");
 
+    // Täysi polku tietokantatiedostoon LocalAppData-kansion alle.
     public static string DbFilePath =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -18,10 +21,12 @@ public static class DbInit
             DbFileName
         );
 
+    // SQLite-yhteysmerkkijono.
     public static string ConnectionString => $"Data Source={DbFilePath};";
 
     public static void EnsureDatabase()
     {
+        // Varmista kansion olemassaolo ennen tietokantatiedoston tarkistusta.
         Directory.CreateDirectory(Path.GetDirectoryName(DbFilePath)!);
 
         if (!File.Exists(SchemaPath))
@@ -32,7 +37,7 @@ public static class DbInit
             );
         }
 
-        // Alusta vain jos db puuttuu tai tauluja ei ole
+        // Alusta vain jos tietokanta puuttuu tai tauluja ei löydy.
         bool needsInit = !File.Exists(DbFilePath);
 
         if (!needsInit)
@@ -44,10 +49,40 @@ public static class DbInit
             using var cmd = checkConn.CreateCommand();
             cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='tuotteet';";
             needsInit = cmd.ExecuteScalar() is null;
+
+            if (!needsInit)
+            {
+                // Lisää toimitus_pvm-sarake vanhoihin tietokantoihin tarvittaessa.
+                using var pragma = checkConn.CreateCommand();
+                pragma.CommandText = "PRAGMA table_info(tilaukset);";
+                using var reader = pragma.ExecuteReader();
+                bool hasToimitusPvm = false;
+                while (reader.Read())
+                {
+                    var columnName = reader.GetString(1);
+                    if (string.Equals(columnName, "toimitus_pvm", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasToimitusPvm = true;
+                        break;
+                    }
+                }
+
+                if (!hasToimitusPvm)
+                {
+                    using var alter = checkConn.CreateCommand();
+                    alter.CommandText = "ALTER TABLE tilaukset ADD COLUMN toimitus_pvm TEXT;";
+                    alter.ExecuteNonQuery();
+
+                    using var backfill = checkConn.CreateCommand();
+                    backfill.CommandText = "UPDATE tilaukset SET toimitus_pvm = tilaus_pvm WHERE toimitettu = 1 AND toimitus_pvm IS NULL;";
+                    backfill.ExecuteNonQuery();
+                }
+            }
         }
 
         if (needsInit)
         {
+            // Luo tietokanta uudelleen schema.sql:n perusteella.
             if (File.Exists(DbFilePath))
                 File.Delete(DbFilePath);
 

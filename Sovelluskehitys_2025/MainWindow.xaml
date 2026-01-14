@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Sovelluskehitys_2025"
         xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
         mc:Ignorable="d"
-        Title="Tilaukset" Height="620" Width="980" Loaded="Window_Loaded" Closing="Window_Closing">
+        Title="Tilaukset" Height="673" Width="1050" Loaded="Window_Loaded" Closing="Window_Closing">
     <mah:MetroWindow.Resources>
         <CollectionViewSource x:Key="KategoriaOptions"/>
         <Style x:Key="SelectableRowStyle" TargetType="DataGridRow">
@@ -24,6 +24,7 @@
         <Style TargetType="DataGridRow" BasedOn="{StaticResource SelectableRowStyle}"/>
     </mah:MetroWindow.Resources>
     <Grid>
+        <!-- Pääikkunan rakenne: valikko, välilehdet ja tilarivi. -->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -39,6 +40,7 @@
             </MenuItem>
         </Menu>
         <TabControl Grid.Row="1" SelectionChanged="TabControl_SelectionChanged" Margin="0">
+            <!-- Tuotteet: listaus, varastosaldo, kärkiraportti -->
             <TabItem Header="Tuotteet">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -101,11 +103,11 @@
                     </StackPanel>
 
                     <GroupBox Header="Top 3 myydyimmät"
-                              Grid.Column="1"
+                              Grid.Column="2"
                               Grid.Row="1"
-                              Margin="606,75,20,0"
+                              Margin="20,75,20,0"
                               Height="220"
-                              VerticalAlignment="Top" Grid.ColumnSpan="2">
+                              VerticalAlignment="Top">
                         <DataGrid x:Name="top_tuotteet_lista" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Height="190">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Tuote" Binding="{Binding tuote}" Width="*"/>
@@ -116,6 +118,7 @@
                     </GroupBox>
                 </Grid>
             </TabItem>
+            <!-- Tuotteet: ylläpitäjätoiminnot (lisää/poista) -->
             <TabItem Header="Lisää/poista">
                 <Grid>
                     <Button x:Name="btn_lisaa_tuote" Content="Lisää tuote" HorizontalAlignment="Left" Margin="200,185,0,0" VerticalAlignment="Top" Height="40" Width="136" Click="Button_Click"/>
@@ -131,6 +134,7 @@
                     <Button x:Name="btn_poista_tuote" Content="Poista tuote" HorizontalAlignment="Left" Margin="533,143,0,0" VerticalAlignment="Top" Height="42" Width="107" Click="Button_Click_2"/>
                 </Grid>
             </TabItem>
+            <!-- Kategoriat: listaus ja ylläpito -->
             <TabItem Header="Kategoriat">
                 <Grid>
                     <DataGrid x:Name="kategorialista" Margin="72,193,72,20" CanUserAddRows="False" IsReadOnly="True"/>
@@ -143,6 +147,7 @@
                     <Label Content="Kuvaus" HorizontalAlignment="Left" Margin="112,65,0,0" VerticalAlignment="Top" Width="86"/>
                 </Grid>
             </TabItem>
+            <!-- Asiakkaat: listaus ja lisäys -->
             <TabItem x:Name="asiakkaat_tab" Header="Asiakkaat">
                 <Grid>
                     <DataGrid x:Name="asiakaslista" Margin="72,193,72,20" CanUserAddRows="False" IsReadOnly="True"/>
@@ -155,6 +160,7 @@
                     <Label Content="Puhelin" HorizontalAlignment="Left" Margin="125,97,0,0" VerticalAlignment="Top" Width="70"/>
                 </Grid>
             </TabItem>
+            <!-- Tilaukset: ostoskori + avoimet tilaukset -->
             <TabItem x:Name="tilaukset_tab" Header="Tilaukset" VerticalAlignment="Center">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -204,6 +210,7 @@
                             <DataGridTextColumn Header="Tilaus ID" Binding="{Binding Id}" Width="120" MinWidth="100" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Asiakas" Binding="{Binding AsiakasNimi}" Width="2*" MinWidth="160" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Osoite" Binding="{Binding Osoite}" Width="3*" MinWidth="220" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Päivämäärä" Binding="{Binding TilausPvm, StringFormat=dd.MM.yyyy HH:mm}" Width="160" MinWidth="140" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Yhteensä" Binding="{Binding Yhteensa, StringFormat=N2}" Width="140" MinWidth="120" IsReadOnly="True"/>
                             <DataGridTemplateColumn Width="150" MinWidth="140">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -239,6 +246,7 @@
                     </DataGrid>
                 </Grid>
             </TabItem>
+            <!-- Toimitetut: arkisto + peruutus -->
             <TabItem Header="Toimitetut">
                 <Grid>
                     <DataGrid x:Name="toimitetut_lista"
@@ -253,6 +261,8 @@
                             <DataGridTextColumn Header="Tilaus ID" Binding="{Binding Id}" Width="120" MinWidth="100" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Asiakas" Binding="{Binding AsiakasNimi}" Width="2*" MinWidth="160" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Osoite" Binding="{Binding Osoite}" Width="3*" MinWidth="220" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Päivämäärä" Binding="{Binding TilausPvm, StringFormat=dd.MM.yyyy HH:mm}" Width="160" MinWidth="140" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Toimitus pvm" Binding="{Binding ToimitusPvm, StringFormat=dd.MM.yyyy HH:mm}" Width="160" MinWidth="140" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Yhteensä" Binding="{Binding Yhteensa, StringFormat=N2}" Width="140" MinWidth="120" IsReadOnly="True"/>
                             <DataGridTemplateColumn Width="140" MinWidth="120">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -285,6 +295,7 @@
                 </Grid>
             </TabItem>
         </TabControl>
+        <!-- Ylläpitäjä-tilan kytkin (vaikuttaa muokkausoikeuksiin) -->
         <CheckBox x:Name="valinta_boksi"
                   Grid.Row="1"
                   Content="Admin"
