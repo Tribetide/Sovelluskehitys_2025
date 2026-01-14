@@ -15,7 +15,7 @@ CREATE TABLE kategoriat (
     kuvaus      TEXT
 );
 
--- Tuotteet, joilla on valinnainen kategoria
+-- Tuotteet
 CREATE TABLE tuotteet (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     nimi         TEXT NOT NULL,
