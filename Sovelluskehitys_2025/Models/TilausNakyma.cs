@@ -3,10 +3,10 @@ using System.Collections.Generic;
 
 namespace Sovelluskehitys_2025.Models
 {
-    // Näkymämallit pää- ja rivinäkymään.
+    // Näkymämallit pää- ja rivinäkymään
     public class TilausNakyma
     {
-        // Tilauksen otsikkokentät päätaulussa.
+        // Tilauksen otsikkokentät päätaulussa
         public long Id { get; set; }
         public string AsiakasNimi { get; set; } = "";
         public string Osoite { get; set; } = "";
@@ -20,7 +20,7 @@ namespace Sovelluskehitys_2025.Models
 
     public class TilausRiviNakyma
     {
-        // Tilausrivin kentät yksittäisen tilauksen alla.
+        // Tilausrivin kentät yksittäisen tilauksen alla
         public long RiviId { get; set; }
         public long TuoteId { get; set; }
         public string TuoteNimi { get; set; } = "";

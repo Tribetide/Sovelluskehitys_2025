@@ -4,7 +4,7 @@ using System.Data;
 
 namespace Sovelluskehitys_2025.Data
 {
-    // Kategoriadatan käsittely (listaus/lisäys/poisto).
+    // Kategoriadatan käsittely (listaus/lisäys/poisto)
     public class CategoryRepository
     {
         private readonly SqliteConnection _connection;
@@ -14,7 +14,7 @@ namespace Sovelluskehitys_2025.Data
             _connection = connection;
         }
 
-        // Täysi kategorialista taulunäkymään.
+        // Täysi kategorialista taulunäkymään
         public DataTable GetCategories()
         {
             using var cmd = _connection.CreateCommand();
@@ -25,7 +25,7 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
-        // Suppea kategorialista pudotusvalikoihin.
+        // Suppea kategorialista pudotusvalikoihin
         public DataTable GetCategoryOptions()
         {
             using var cmd = _connection.CreateCommand();
@@ -36,12 +36,12 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
-        // Lisää uusi kategoria ja tarkistaa duplikaattinimet.
+        // Lisää uusi kategoria ja tarkistaa duplikaattinimet
         public void AddCategory(string name, string? description)
         {
             using (var check = _connection.CreateCommand())
             {
-                // Iso- ja pienikirjaimet ohittava duplikaattitarkistus.
+                // Iso- ja pienikirjaimet ohittava duplikaattitarkistus
                 check.CommandText = "SELECT 1 FROM kategoriat WHERE lower(nimi) = lower(@nimi) LIMIT 1;";
                 check.Parameters.AddWithValue("@nimi", name);
                 if (check.ExecuteScalar() != null)

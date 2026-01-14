@@ -9,7 +9,7 @@
   <Identity
     Name="424013b5-109c-4f58-b874-f6c43c12488d"
     Publisher="CN=Ville"
-    Version="1.0.7.0" />
+    Version="1.0.8.0" />
 
   <Properties>
     <DisplayName>Sovelluskehitys_Setup</DisplayName>

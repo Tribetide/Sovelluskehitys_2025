@@ -9,7 +9,7 @@ namespace Sovelluskehitys_2025
     /// </summary>
     public partial class App : Application
     {
-        // Ei vielä omaa käynnistyslogiikkaa; varattu tulevaa laajennusta varten.
+        // Ei vielä omaa käynnistyslogiikkaa
     }
 
 }

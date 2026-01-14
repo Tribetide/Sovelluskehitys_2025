@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Sovelluskehitys_2025.Data
 {
-    // Tilausdatan käsittely (tilaukset, rivit ja varastosaldo).
+    // Tilausdatan käsittely (tilaukset, rivit ja varastosaldo)
     public class OrderRepository
     {
         private readonly SqliteConnection _connection;
@@ -15,7 +15,7 @@ namespace Sovelluskehitys_2025.Data
             _connection = connection;
         }
 
-        // Litteä lista käyttöliittymälle ennen pää- ja rivinäkymän ryhmittelyä.
+        // Lista käyttöliittymälle ennen pää- ja rivinäkymän ryhmittelyä
         public DataTable GetOpenOrders()
         {
             using var cmd = _connection.CreateCommand();
@@ -42,8 +42,8 @@ namespace Sovelluskehitys_2025.Data
             table.Load(reader);
             return table;
         }
-
-        // Litteä lista toimitetuista tilauksista käyttöliittymälle.
+  
+        // Lista toimitetuista tilauksista käyttöliittymälle
         public DataTable GetDeliveredOrders()
         {
             using var cmd = _connection.CreateCommand();
@@ -71,7 +71,7 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
-        // Myyntien aggregaatti kärkikolmikon raportille.
+        // Myyntien kerääminen kärkikolmikon raportille
         public DataTable GetTopProducts(int limit)
         {
             using var cmd = _connection.CreateCommand();
@@ -91,7 +91,7 @@ namespace Sovelluskehitys_2025.Data
             return table;
         }
 
-        // Perinteinen: yhden rivin tilauksen luonti (säilytetään yhteensopivuuden vuoksi).
+        // Perinteinen: yhden rivin tilauksen luonti (säilytetään yhteensopivuuden vuoksi)
         public void CreateOrder(long customerId, long productId, int quantity)
         {
             using var tx = _connection.BeginTransaction();
@@ -110,7 +110,7 @@ namespace Sovelluskehitys_2025.Data
                 using (var cmd = _connection.CreateCommand())
                 {
                     cmd.Transaction = tx;
-                    // Hintakuva: rivihinta tallentaa hinnan * määrän tilaushetkellä.
+                    // Hintakuva: rivihinta tallentaa hinnan * määrän tilaushetkellä
                     cmd.CommandText = @"
                         INSERT INTO tilausrivit (tilaus_id, tuote_id, maara, rivihinta)
                         VALUES (@tilaus_id, @tuote_id, @maara,
@@ -124,7 +124,7 @@ namespace Sovelluskehitys_2025.Data
                 using (var cmd = _connection.CreateCommand())
                 {
                     cmd.Transaction = tx;
-                    // Vähennä saldoa vain jos sitä on riittävästi.
+                    // Vähennä saldoa vain jos sitä on riittävästi
                     cmd.CommandText = @"
                         UPDATE tuotteet
                         SET varastosaldo = varastosaldo - @maara
@@ -146,7 +146,7 @@ namespace Sovelluskehitys_2025.Data
             }
         }
 
-        // Luo tilauksen useilla riveillä ja päivittää saldot transaktion sisällä.
+        // Luo tilauksen useilla riveillä ja päivittää saldot transaktion sisällä
         public void CreateOrderWithLines(long customerId, IReadOnlyList<(long productId, int quantity)> lines)
         {
             if (lines.Count == 0)
@@ -189,7 +189,7 @@ namespace Sovelluskehitys_2025.Data
                     using (var cmd = _connection.CreateCommand())
                     {
                         cmd.Transaction = tx;
-                        // Tallenna rivin hintahetkikopio.
+                        // Tallenna rivin hintahetkikopio
                         cmd.CommandText = @"
                             INSERT INTO tilausrivit (tilaus_id, tuote_id, maara, rivihinta)
                             VALUES (@tilaus_id, @tuote_id, @maara,
@@ -210,7 +210,7 @@ namespace Sovelluskehitys_2025.Data
             }
         }
 
-        // Merkitsee tilauksen toimitetuksi/peruutetuksi.
+        // Merkitsee tilauksen toimitetuksi/peruutetuksi
         public void SetDelivered(long orderId, bool delivered)
         {
             using var cmd = _connection.CreateCommand();
@@ -224,7 +224,7 @@ namespace Sovelluskehitys_2025.Data
             cmd.ExecuteNonQuery();
         }
 
-        // Poistaa tilauksen ja palauttaa saldon tilausrivien perusteella.
+        // Poistaa tilauksen ja palauttaa saldon tilausrivien perusteella
         public void DeleteOrder(long orderId)
         {
             using var tx = _connection.BeginTransaction();
@@ -233,7 +233,7 @@ namespace Sovelluskehitys_2025.Data
                 using (var cmd = _connection.CreateCommand())
                 {
                     cmd.Transaction = tx;
-                    // Palauttaa saldon kaikille tilauksen tuotteille.
+                    // Palauttaa saldon kaikille tilauksen tuotteille
                     cmd.CommandText = @"
                         UPDATE tuotteet
                         SET varastosaldo = varastosaldo + (
@@ -265,7 +265,7 @@ namespace Sovelluskehitys_2025.Data
             }
         }
 
-        // Päivittää tilausrivin määrän ja säätää saldoa muutoksen verran.
+        // Päivittää tilausrivin määrän ja säätää saldoa muutoksen verran
         public void UpdateOrderQuantity(long rowId, long productId, int newQty, int oldQty)
         {
             int delta = newQty - oldQty;
@@ -277,7 +277,7 @@ namespace Sovelluskehitys_2025.Data
             {
                 if (delta > 0)
                 {
-                    // Määrän kasvatus: tarvitaan lisää saldoa.
+                    // Määrän kasvatus: tarvitaan lisää saldoa
                     using var saldo = _connection.CreateCommand();
                     saldo.Transaction = tx;
                     saldo.CommandText = @"
@@ -292,7 +292,7 @@ namespace Sovelluskehitys_2025.Data
                 }
                 else
                 {
-                    // Määrän pienennys: palautetaan saldoa.
+                    // Määrän pienennys: palautetaan saldoa
                     using var saldo = _connection.CreateCommand();
                     saldo.Transaction = tx;
                     saldo.CommandText = @"
@@ -327,7 +327,7 @@ namespace Sovelluskehitys_2025.Data
             }
         }
 
-        // Mukavuusylikuormitus: hae vanhat arvot ensin.
+        // Päivittää tilausrivin määrän ja säätää saldoa muutoksen verran
         public void UpdateOrderQuantity(long rowId, int newQty)
         {
             using var cmd = _connection.CreateCommand();
